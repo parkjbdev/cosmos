@@ -5,4 +5,14 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[profile.dev]
+panic = "abort" # disable unwinding for faster build
+
+[profile.release]
+# disable unwinding for faster build
+# may be changed to "unwind" for more informative error messages
+# eh_personality is required for unwinding
+# see https://doc.rust-lang.org/cargo/reference/profiles.html#panic
+panic = "abort" 
+
 [dependencies]
