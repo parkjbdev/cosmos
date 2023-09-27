@@ -1,5 +1,5 @@
 [package]
-name = "vamos"
+name = "cosmos"
 version = "0.1.0"
 edition = "2021"
 
@@ -17,3 +17,4 @@ panic = "abort"
 
 [dependencies]
 bootloader = "0.9.23"
+# bootloader = "0.10.13"
