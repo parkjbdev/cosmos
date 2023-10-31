@@ -42,10 +42,14 @@ struct ScreenChar {
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
+use volatile::Volatile;
+
 #[repr(transparent)]
 struct Buffer {
-    chars: [[ScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT], // repeats `ScreenChar` `BUFFER_WIDTH`
-                                                        // times, and repeats that `BUFFER_HEIGHT` times
+    // `Volatile` is used to prevent the compiler from optimizing away reads and writes to the buffer
+    // We are accessing to the VGA buffer, which is a memory-mapped I/O device but the compiler doesn't know that
+    chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT], // repeats `ScreenChar` `BUFFER_WIDTH`
+                                                                  // times, and repeats that `BUFFER_HEIGHT` times
 }
 
 pub struct Writer {
@@ -69,10 +73,10 @@ impl Writer {
                 let col = self.column_position;
 
                 let color_code = self.color_code;
-                self.buffer.chars[row][col] = ScreenChar {
+                self.buffer.chars[row][col].write(ScreenChar {
                     ascii_character: byte,
                     color_code,
-                };
+                });
 
                 self.column_position += 1;
             }
@@ -90,12 +94,53 @@ impl Writer {
         }
     }
 
+    fn clear_row(&mut self, row: usize) {
+        let blank = ScreenChar {
+            ascii_character: b' ',
+            color_code: self.color_code,
+        };
+
+        for col in 0..BUFFER_WIDTH {
+            self.buffer.chars[row][col].write(blank);
+        }
+    }
+
     fn new_line(&mut self) {
-        // TODO
+        for row in 1..BUFFER_HEIGHT {
+            for col in 0..BUFFER_WIDTH {
+                let character = self.buffer.chars[row][col].read();
+                self.buffer.chars[row - 1][col].write(character);
+            }
+        }
+        self.clear_row(BUFFER_HEIGHT - 1);
+        self.column_position = 0;
     }
 }
 
+// Implement the `fmt::Write` trait to use the formatting macros provided by the standard library
+use core::fmt;
+impl fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_string(s);
+        Ok(())
+    }
+}
+
+use lazy_static::lazy_static;
+use spin::Mutex;
+
+lazy_static! {
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
+        column_position: 0,
+        color_code: ColorCode::new(Color::Yellow, Color::Black),
+        buffer: unsafe {
+            &mut *(0xb8000 as *mut Buffer) // 0xb8000 is the start address of the VGA buffer
+        }
+    });
+}
+
 pub fn print_hello() {
+    use core::fmt::Write;
     let mut writer = Writer {
         column_position: 0,
         color_code: ColorCode::new(Color::Yellow, Color::Black),
@@ -104,5 +149,6 @@ pub fn print_hello() {
 
     writer.write_byte(b'H');
     writer.write_string("ello ");
-    writer.write_string("Wörld!");
+    writer.write_string("Wörld!\n");
+    write!(writer, "The numbers are {} and {}\n", 42, 1.0 / 3.0).unwrap();
 }

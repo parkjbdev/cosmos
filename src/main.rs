@@ -16,6 +16,9 @@ mod vga_buffer;
 // "C" calling convention is used to prevent the compiler from adding the Rust ABI
 pub extern "C" fn _start() -> ! {
     vga_buffer::print_hello();
+    use core::fmt::Write;
+    vga_buffer::WRITER.lock().write_string("Hello Again");
+    write!(vga_buffer::WRITER.lock(), ", some numbers: {} {}", 42, 1.337).unwrap();
 
     loop {}
 }
