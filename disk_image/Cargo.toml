@@ -1,0 +1,9 @@
+[package]
+name = "disk_image"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+fatfs = "0.3.6"
+# gpt = "3.1.0"
+gpt = "2.0.0"
