@@ -1,0 +1,6 @@
+#! /usr/bin/zsh
+
+qemu-img create -f qcow2 disk.img 16G
+truncate -s 64m varstore.img
+truncate -s 64m efi.img
+dd if=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd of=efi.img conv=notrunc
