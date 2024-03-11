@@ -1,9 +1,9 @@
 #! /usr/bin/zsh
 
-# qemu-img create -f qcow2 disk.img 16G
-# truncate -s 64m varstore.img
-# truncate -s 64m efi.img
-# dd if=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd of=efi.img conv=notrunc
+if [ ! -f esp/EFI/boot/bootaa64.efi ]; then
+  mkdir -p esp/EFI/boot
+  ln -s ../../../../target/aarch64-unknown-uefi/debug/cosmos.efi esp/EFI/boot/bootaa64.efi
+fi
 
 if [ ! -f disk.img ]; then
   qemu-img create -f qcow2 disk.img 16G
