@@ -1,16 +1,19 @@
-#![no_main]
-#![no_std]
+#![feature(strict_provenance)]
+#![feature(exposed_provenance)]
 #![feature(alloc_error_handler)]
 #![feature(asm_const)]
 
+#![no_main]
+#![no_std]
+
 pub mod acpi;
 pub mod irq;
+pub mod init;
+pub mod sync;
 
 use core::alloc::Layout;
 use log::info;
 use uefi::prelude::*;
-use uefi::table::cfg;
-use core::ffi::c_void;
 
 extern crate alloc;
 
@@ -35,9 +38,9 @@ fn efi_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     info!("Time: {:?}", time);
 
     // Locate the ACPI RSDP Table
-    info!("Locating ACPI RSDP Table from UEFI Configuration Table");
-    let rsdp_addr = locate_acpi_rsdp_table(&system_table);
-    info!("rsdp addr: {:?}", rsdp_addr);
+    // info!("Locating ACPI RSDP Table from UEFI Configuration Table");
+    // let rsdp_addr = locate_acpi_rsdp_table(&system_table).unwrap();
+    // info!("rsdp addr: {:?}", rsdp_addr);
 
     // Initialize Interrupt
     info!("Initializing Interrupt");
@@ -47,15 +50,6 @@ fn efi_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     system_table.boot_services().stall(10_000_000);
 
     Status::SUCCESS
-}
-
-fn locate_acpi_rsdp_table(system_table: &SystemTable<Boot>) -> Option<*const c_void> {
-    let mut config_entries = system_table.config_table().iter();
-    let rsdp_addr = config_entries
-        .find(|entry| matches!(entry.guid, cfg::ACPI_GUID | cfg::ACPI2_GUID))
-        .map(|entry| entry.address);
-
-    rsdp_addr
 }
 
 #[alloc_error_handler]
