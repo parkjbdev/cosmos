@@ -37,6 +37,13 @@ fn timer_handler() -> bool {
     info!("Handle Timer Interrupt");
 
     // TODO: Handle timer
+    unsafe {
+        asm!(
+            "msr cntp_cval_el0, xzr",
+            "msr cntp_ctl_el0, xzr",
+            options(nostack, nomem)
+        );
+    }
 
     true
 }
@@ -93,7 +100,6 @@ pub fn init() {
         nst_irq, nst_irqtype, nst_irqflags
     );
 
-
     /* Virtual Timer */
     let (vt_irqtype, vt_irq, vt_irqflags) = parse_irqcells(prop_irq_timer);
     let (_, prop_irq_timer) = prop_irq_timer.split_at(SPLIT_SIZE * 3);
@@ -112,7 +118,6 @@ pub fn init() {
         ht_irq, ht_irqtype, ht_irqflags
     );
     // TODO: register hypervisor timer
-
 
     // Register Non-Secure Timer
     unsafe {
@@ -138,7 +143,10 @@ pub fn init() {
 
     info!("Timer Interrupt Enabled");
     unsafe {
-        info!("name: {}", IRQ_NAMES[u32::from(ns_timer_irq) as usize].unwrap());
+        info!(
+            "name: {}",
+            IRQ_NAMES[u32::from(ns_timer_irq) as usize].unwrap()
+        );
     }
 
     // Scheduler Interrupt
@@ -199,6 +207,9 @@ fn irq_idx(irq_type: u32, irq_number: u32) -> IntId {
     irq_id
 }
 
+fn do_irq() {
+
+}
 
 fn test_irq() {
     // Testing Interrupt

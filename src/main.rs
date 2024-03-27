@@ -6,8 +6,8 @@
 #![no_main]
 #![no_std]
 
+pub mod arch;
 pub mod acpi;
-pub mod irq;
 pub mod init;
 pub mod sync;
 
@@ -42,10 +42,8 @@ fn efi_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     // let rsdp_addr = locate_acpi_rsdp_table(&system_table).unwrap();
     // info!("rsdp addr: {:?}", rsdp_addr);
 
-    // Initialize Interrupt
-    info!("Initializing Interrupt");
-    irq::init();
-    irq::enable();
+    // Initialize arch dependent
+    arch::processor_init();
 
     system_table.boot_services().stall(10_000_000);
 
