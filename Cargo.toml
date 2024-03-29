@@ -1,0 +1,10 @@
+[package]
+name = "cosmos-loader"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+aarch64-cpu = "9"
+goblin = { version = "0.8", default-features = false, features = ["elf64"] }
+hermit-dtb = "0.1.1"
+log = "0.4.21"
