@@ -1,4 +1,0 @@
-qemu-system-aarch64 -machine virt -machine dumpdtb=qemu.dtb
-echo 'device tree binary created'
-dtc -I dtb -O dts qemu.dtb > qemu.dts
-echo 'device tree source created'

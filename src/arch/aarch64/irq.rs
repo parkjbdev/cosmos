@@ -4,7 +4,7 @@ use log::{debug, info};
 
 use generic_once_cell::OnceCell;
 
-use crate::{init::dtb, sync::spin::RawSpinlock};
+use crate::{arch::get_dtb, sync::spin::RawSpinlock};
 
 const MAX_HANDLERS: usize = 1024;
 type Handler = fn() -> bool;
@@ -52,7 +52,7 @@ pub fn init() {
     info!("Initializing GIC (Generic Interrupt Controller)");
 
     // TODO: Load DTB (Device Tree Blob)
-    let device_tree = dtb::get();
+    let device_tree = get_dtb();
 
     // TODO: parse GICD & GICC from the dtb /intc reg
     const GICD_BASE_ADDRESS: *mut u64 = 0x800_0000 as _;

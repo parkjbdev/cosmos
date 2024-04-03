@@ -2,55 +2,32 @@
 #![feature(exposed_provenance)]
 #![feature(alloc_error_handler)]
 #![feature(asm_const)]
-
+#![feature(naked_functions)]
 #![no_main]
 #![no_std]
 
+#[macro_use]
+pub mod macros;
 pub mod arch;
-pub mod acpi;
-pub mod init;
+pub mod console;
+pub mod entity;
+pub mod log;
+pub mod start;
 pub mod sync;
 
 use core::alloc::Layout;
-use log::info;
-use uefi::prelude::*;
-
-extern crate alloc;
-
-#[entry]
-fn efi_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
-    uefi_services::init(&mut system_table).unwrap();
-    let mut system_table = uefi_services::system_table();
-
-    info!("Welcome to cosmos");
-
-    system_table
-        .stdout()
-        .reset(false)
-        .expect("Failed to reset stdout");
-
-    // UEFI Revision
-    let uefi_rev = system_table.uefi_revision();
-    info!("UEFI Revision {}.{}", uefi_rev.major(), uefi_rev.minor());
-
-    // Time
-    let time = system_table.runtime_services().get_time().unwrap();
-    info!("Time: {:?}", time);
-
-    // Locate the ACPI RSDP Table
-    // info!("Locating ACPI RSDP Table from UEFI Configuration Table");
-    // let rsdp_addr = locate_acpi_rsdp_table(&system_table).unwrap();
-    // info!("rsdp addr: {:?}", rsdp_addr);
-
-    // Initialize arch dependent
-    arch::processor_init();
-
-    system_table.boot_services().stall(10_000_000);
-
-    Status::SUCCESS
-}
 
 #[alloc_error_handler]
 fn handle_alloc_error(_layout: Layout) -> ! {
-    panic!("Memory Allocation Error");
+    panic!("Memory Allocatio Error");
+}
+
+#[cfg(target_os = "none")]
+#[doc(hidden)]
+fn _print(args: core::fmt::Arguments<'_>) {
+    use core::fmt::Write;
+
+    unsafe {
+        console::CONSOLE.write_fmt(args).unwrap();
+    }
 }

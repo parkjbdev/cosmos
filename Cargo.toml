@@ -7,11 +7,16 @@ edition = "2021"
 
 [dependencies]
 aarch64 = "0.0.11"
+aarch64-cpu = "9.4.0"
 acpi = "5.0.0"
 arm-gic = "0.1.0"
 generic_once_cell = "0.1.1"
+goblin = { version = "0.8", default-features = false, features = ["elf64"] }
 hermit-dtb = "0.1.1"
 lock_api = "0.4.11"
 log = "0.4.20"
-uefi = { version = "0.26.0", features = ["alloc"] }
-uefi-services = "0.23.0"
+plain = "0.2.3"
+
+[dependencies.fdt-rs]
+version = "0.4"
+default-features = false
