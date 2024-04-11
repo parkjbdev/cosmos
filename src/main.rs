@@ -22,7 +22,12 @@ use log_crate::info;
 pub(crate) unsafe extern "C" fn loader_main() -> ! {
     log::init();
     arch::stdout::init();
-    info!("Hello World from cosmos");
+
+    println!("  _________  _________ ___  ____  _____");
+    println!(" / ___/ __ \\/ ___/ __ `__ \\/ __ \\/ ___/");
+    println!("/ /__/ /_/ (__  ) / / / / / /_/ (__  ) ");
+    println!("\\___/\\____/____/_/ /_/ /_/\\____/____/  ");
+    println!();
 
     arch::init();
     arch::interrupts::init();
