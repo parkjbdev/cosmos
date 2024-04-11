@@ -1,3 +1,14 @@
+#[cfg(target_os = "none")]
+#[doc(hidden)]
+pub fn _print(args: core::fmt::Arguments<'_>) {
+    use crate::console;
+    use core::fmt::Write;
+
+    unsafe {
+        console::CONSOLE.write_fmt(args).unwrap();
+    }
+}
+
 ///
 /// Prints to the standard output.
 ///
@@ -9,7 +20,7 @@ macro_rules! print {
     ($($arg:tt)*) => {
         #[cfg(target_os = "none")]
         {
-            $crate::_print(::core::format_args!($($arg)*));
+            $crate::print::_print(::core::format_args!($($arg)*));
         }
     };
 }
@@ -27,7 +38,7 @@ macro_rules! println {
     ($($arg:tt)*) => {
         #[cfg(target_os = "none")]
         {
-            $crate::_print(::core::format_args!("{}\n", format_args!($($arg)*)));
+            $crate::print::_print(::core::format_args!("{}\n", format_args!($($arg)*)));
         }
     };
 }

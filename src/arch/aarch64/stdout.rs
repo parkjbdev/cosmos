@@ -1,7 +1,5 @@
-use hermit_dtb::Dtb;
-
 use super::constants::SERIAL_PORT_ADDRESS;
-use super::get_dtb;
+use super::dtb::get_dtb;
 use super::serial::SerialPort;
 
 pub static mut COM1: SerialPort = SerialPort::new(SERIAL_PORT_ADDRESS);

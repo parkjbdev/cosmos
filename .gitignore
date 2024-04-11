@@ -1,3 +1,5 @@
 /target
 
 disk.img
+*.dtb
+*.img

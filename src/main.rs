@@ -1,3 +1,4 @@
+#![feature(slice_as_chunks)]
 #![feature(strict_provenance)]
 #![feature(exposed_provenance)]
 #![feature(alloc_error_handler)]
@@ -7,10 +8,9 @@
 #![no_std]
 
 #[macro_use]
-pub mod macros;
+pub mod print;
 pub mod arch;
 pub mod console;
-pub mod entity;
 pub mod log;
 pub mod start;
 pub mod sync;
@@ -19,15 +19,5 @@ use core::alloc::Layout;
 
 #[alloc_error_handler]
 fn handle_alloc_error(_layout: Layout) -> ! {
-    panic!("Memory Allocatio Error");
-}
-
-#[cfg(target_os = "none")]
-#[doc(hidden)]
-fn _print(args: core::fmt::Arguments<'_>) {
-    use core::fmt::Write;
-
-    unsafe {
-        console::CONSOLE.write_fmt(args).unwrap();
-    }
+    panic!("Memory Allocation Error");
 }

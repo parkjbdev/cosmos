@@ -1,5 +1,6 @@
 pub const SERIAL_PORT_ADDRESS: u32 = 0x09000000;
-pub const DEVICE_TREE: u64 = 0x40000000;
+pub const RAM_START: u64 = 0x40000000;
+pub const DEVICE_TREE: u64 = RAM_START;
 
 extern "C" {
     pub static __boot_core_stack_start: u8;

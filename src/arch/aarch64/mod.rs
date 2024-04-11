@@ -1,29 +1,22 @@
 pub mod constants;
-pub mod irq;
+pub mod dtb;
+pub mod interrupts;
 pub mod serial;
 pub mod start;
+pub mod state;
 pub mod stdout;
-
-use hermit_dtb::Dtb;
-use log::info;
 
 pub use constants::*;
 
 use crate::arch::stdout::COM1;
+use log::info;
 
-pub fn get_dtb<'a>() -> Dtb<'a> {
-    unsafe { Dtb::from_raw(core::ptr::from_exposed_addr(DEVICE_TREE as usize)).unwrap() }
+extern "C" {
+    pub fn get_el() -> u8;
 }
 
 pub fn init() {
-    init_kernel();
-    info!("Initializing Interrupt");
-    irq::init();
-    irq::enable();
-}
-
-pub fn init_kernel() {
-    let dtb = get_dtb();
+    let dtb = dtb::get_dtb();
     // CPU
     let cpus = dtb.enum_subnodes("/cpus");
     let cpu_cnt = cpus

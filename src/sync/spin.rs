@@ -4,7 +4,6 @@ use lock_api::{GuardSend, RawMutex};
 
 pub struct RawSpinlock(AtomicBool);
 
-// reference 
 // reference hermit-sync/src/mutex/spin.rs
 unsafe impl RawMutex for RawSpinlock {
     const INIT: Self = Self(AtomicBool::new(false));

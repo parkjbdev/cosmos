@@ -8,13 +8,11 @@ impl SerialPort {
     }
 
     pub unsafe fn set_port(&mut self, addr: u32) {
-        unsafe {
-            core::ptr::write_volatile(&mut self.port_address, addr);
-        }
+        core::ptr::write_volatile(&mut self.port_address, addr);
     }
 
     pub unsafe fn get_port(&self) -> u32 {
-        unsafe { core::ptr::read_volatile(&self.port_address) }
+        core::ptr::read_volatile(&self.port_address)
     }
 
     pub fn write_byte(&self, byte: u8) {
