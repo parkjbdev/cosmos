@@ -23,8 +23,7 @@ run: el2
 
 el3: ${DISK_IMG} ${KERNEL}
 	qemu-system-aarch64 -M virt  \
-			-machine secure=true \
-			-machine virt,gic-version=3  \
+			-machine virt,gic-version=3,secure=true  \
       -cpu ${CPU} -smp ${CPU_CORE} -m ${RAM_SIZE}           \
       -device virtio-scsi-pci,id=scsi0              \
       -object rng-random,filename=/dev/urandom,id=rng0      \
@@ -39,8 +38,7 @@ el3: ${DISK_IMG} ${KERNEL}
 
 el2: ${DISK_IMG} ${KERNEL}
 	qemu-system-aarch64 -M virt  \
-      -machine virtualization=true \
-			-machine virt,gic-version=3  \
+			-machine virt,gic-version=3,virtualization=true  \
       -cpu ${CPU} -smp ${CPU_CORE} -m ${RAM_SIZE}           \
       -device virtio-scsi-pci,id=scsi0              \
       -object rng-random,filename=/dev/urandom,id=rng0      \
@@ -64,7 +62,7 @@ el1: ${DISK_IMG} ${KERNEL}
       -netdev user,id=net0,hostfwd=tcp::8022-:22            \
       -semihosting \
       -display none \
-      -kernel ${KERNEL} \
+      -device loader,file=${KERNEL} \
       -drive if=virtio,format=${DISK_FORMAT},file=${DISK_IMG}          \
       -nographic
 

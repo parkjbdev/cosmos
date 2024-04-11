@@ -7,7 +7,7 @@ use core::{
 
 use arm_gic::irq_disable;
 
-use crate::start::loader_main;
+use crate::loader_main;
 
 global_asm!(include_str!("entry.s"));
 global_asm!(include_str!("el.s"));
