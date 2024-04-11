@@ -5,13 +5,17 @@
 .section .text._start
 
 _start:
-	// Only proceed on the boot core. Park it otherwise.
+  // Only proceed if the core executes in EL2. Park it otherwise.
+  mrs x1, CurrentEL
+  cmp x1, #0x8
+  b.ne .L_parking_loop
 
-	mrs	x1, mpidr_el1
+	// Only proceed on the boot core. Park it otherwise.
+	mrs	x1, MPIDR_EL1
 	and	x1, x1, _core_id_mask
 	mov	x2, xzr  // Assume CPU 0 is responsible for booting
 	cmp	x1, x2
-	b.ne	1f
+	b.ne .L_parking_loop
 	// If execution reaches here, it is the boot core. Now, prepare the jump to Rust code.
 
 	// This loads the physical address of the stack end. For details see
@@ -24,8 +28,9 @@ _start:
 	b	_start_cosmos
 
 	// Infinitely wait for events (aka "park the core").
-1:	wfe
-	b	1b
+.L_parking_loop:
+  wfe
+  b .L_parking_loop
 
 .size	_start, . - _start
 .type	_start, function

@@ -1,8 +1,8 @@
 CPU := cortex-a76
 CPU_CORE := 4
-RAM_SIZE := 8192
+RAM_SIZE := 4096
 
-KERNEL := ./target/aarch64-unknown-none/debug/cosmos
+KERNEL := ./target/aarch64-unknown-none-softfloat/debug/cosmos
 
 DISK_IMG := disk.img
 DISK_FORMAT := qcow2
@@ -22,7 +22,11 @@ ${DISK_IMG}:
 run: el2
 
 el3: ${DISK_IMG} ${KERNEL}
-	qemu-system-aarch64 -M virt  \
+	@echo ""
+	@echo "CRITICAL WARNING!!: You'd better run at EL2"
+	@echo ""
+
+	@qemu-system-aarch64 -M virt  \
 			-machine virt,gic-version=3,secure=true  \
       -cpu ${CPU} -smp ${CPU_CORE} -m ${RAM_SIZE}           \
       -device virtio-scsi-pci,id=scsi0              \
@@ -37,7 +41,7 @@ el3: ${DISK_IMG} ${KERNEL}
       -nographic
 
 el2: ${DISK_IMG} ${KERNEL}
-	qemu-system-aarch64 -M virt  \
+	@qemu-system-aarch64 -M virt  \
 			-machine virt,gic-version=3,virtualization=true  \
       -cpu ${CPU} -smp ${CPU_CORE} -m ${RAM_SIZE}           \
       -device virtio-scsi-pci,id=scsi0              \
@@ -52,7 +56,11 @@ el2: ${DISK_IMG} ${KERNEL}
       -nographic
 
 el1: ${DISK_IMG} ${KERNEL}
-	qemu-system-aarch64 -M virt  \
+	@echo ""
+	@echo "CRITICAL WARNING!!: You'd better run at EL2"
+	@echo ""
+
+	@qemu-system-aarch64 -M virt  \
 			-machine virt,gic-version=3  \
       -cpu ${CPU} -smp ${CPU_CORE} -m ${RAM_SIZE}           \
       -device virtio-scsi-pci,id=scsi0              \

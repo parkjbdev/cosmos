@@ -60,10 +60,13 @@ pub fn init() {
     // }
 
     irq_enable();
-    info!("Interrupt Enabled.. Sending Test Interrupt");
-    unsafe {
-        asm!("svc 0x80");
-    }
+    info!("Interrupt Enabled..Causing Exception for Test");
+    let big_addr: u64 = 8 * 1024 * 1024 * 1024;
+    unsafe { core::ptr::read_volatile(big_addr as *mut u64) };
+    info!("hello");
+    // unsafe {
+    //     asm!("svc 0x80");
+    // }
     // test_irq(&mut gic);
 }
 
