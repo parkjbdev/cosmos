@@ -20,10 +20,10 @@ _start:
 
 	// This loads the physical address of the stack end. For details see
 	// https://github.com/rust-embedded/rust-raspberrypi-OS-tutorials/blob/master/16_virtual_mem_part4_higher_half_kernel/src/bsp/raspberrypi/link.ld
-	adrp	x4, __boot_core_stack_end_exclusive
-	add		x4, x4, #:lo12:__boot_core_stack_end_exclusive
-	mov		sp, x4
-	
+	adrp	x0, __boot_core_stack_end_exclusive
+	add		x0, x0, #:lo12:__boot_core_stack_end_exclusive
+	mov		sp, x0
+
 	// Jump to Rust code.
 	b	_start_cosmos
 
