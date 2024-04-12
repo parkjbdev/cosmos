@@ -1,3 +1,4 @@
+#![feature(panic_info_message)]
 #![feature(slice_as_chunks)]
 #![feature(strict_provenance)]
 #![feature(exposed_provenance)]
@@ -18,6 +19,8 @@ extern crate log as log_crate;
 use core::alloc::Layout;
 use log_crate::info;
 
+use crate::arch::get_el;
+
 #[no_mangle]
 pub(crate) unsafe extern "C" fn loader_main() -> ! {
     log::init();
@@ -28,6 +31,8 @@ pub(crate) unsafe extern "C" fn loader_main() -> ! {
     println!("/ /__/ /_/ (__  ) / / / / / /_/ (__  ) ");
     println!("\\___/\\____/____/_/ /_/ /_/\\____/____/  ");
     println!();
+
+    info!("Current Exception Level: EL{}", get_el());
 
     arch::init();
     arch::interrupts::init();
@@ -55,7 +60,21 @@ fn handle_alloc_error(_layout: Layout) -> ! {
 }
 
 #[panic_handler]
-fn panic(info: &core::panic::PanicInfo<'_>) -> ! {
-    info!("PANIC {}", info);
+fn handle_panic(info: &core::panic::PanicInfo<'_>) -> ! {
+    println!("KERNEL PANIC!!!");
+
+    let (file, line, column) = match info.location() {
+        Some(location) => (location.file(), location.line(), location.column()),
+        None => ("unknown", 0, 0),
+    };
+
+    println!(
+        "[PANIC] {} ({}, line {}, column {})",
+        info.message().unwrap_or(&format_args!("Unknown Error")),
+        file,
+        line,
+        column,
+    );
+
     loop {}
 }
