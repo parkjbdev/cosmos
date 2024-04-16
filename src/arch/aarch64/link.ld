@@ -5,7 +5,7 @@
 OUTPUT_FORMAT("elf64-littleaarch64")
 OUTPUT_ARCH("aarch64")
 ENTRY(_start)
-phys = 0x40200000;
+kernel_start = 0x40200000;
 
 PHDRS
 {
@@ -16,28 +16,42 @@ PHDRS
 
 SECTIONS
 {
-  . = phys;
-  kernel_start = .;
+  . = kernel_start;
   .text : {
+    __text_start = .;
     KEEP(*(.text._start))
+    *(.text._start_cosmos)
+    __exception_vector_table_start = .;
+    KEEP(*(.text._exception_vector_table))
+    __exception_vector_table_end = .;
     *(.text)
     *(.text.*)
+    __text_end = .;
   } :segment_rx
+
   .rodata : ALIGN(8) {
+    __rodata_start = .;
     *(.rodata)
     *(.rodata.*)
+    __rodata_end = .;
   } :segment_ro
+
   .got    : ALIGN(8) {
     /* Global offset table Todo */
     *(.got)
   } :segment_ro
+  ASSERT(SIZEOF(.got) == 0, "Relocation Not Supported")
+
   .data   : ALIGN(8) {
     *(.data)
     *(.data.*)
   } :segment_rw
-  .bss    : ALIGN(8) {
+  .bss (NOLOAD)    : ALIGN(16) {
+    __bss_start = .;
     *(.bss)
     *(.bss.*)
+    . = ALIGN(16);
+    __bss_end_exclusive = .;
   } :segment_rw
   . = ALIGN(4K); /* Align to page boundary */
   /***********************************************************************************************

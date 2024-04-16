@@ -30,25 +30,25 @@ pub fn init_timer(gic: &GicV3) {
     // armv8-timer found..
     // parse timer interrupts
     let timer_interrupts = dtb.get_property("/timer", "interrupts").unwrap();
-    const split_size: usize = core::mem::size_of::<u32>();
+    const SPLIT_SIZE: usize = core::mem::size_of::<u32>();
 
-    let chunks: &[[u8; split_size]] = unsafe { timer_interrupts.as_chunks_unchecked() };
-    let timer_secure = Timer {
+    let chunks: &[[u8; SPLIT_SIZE]] = unsafe { timer_interrupts.as_chunks_unchecked() };
+    let _timer_secure = Timer {
         irq_type: u32::from_be_bytes(chunks[0]),
         irq_num: u32::from_be_bytes(chunks[1]),
         irq_flag: u32::from_be_bytes(chunks[2]),
     };
-    let timer_nonsecure = Timer {
+    let _timer_nonsecure = Timer {
         irq_type: u32::from_be_bytes(chunks[3]),
         irq_num: u32::from_be_bytes(chunks[4]),
         irq_flag: u32::from_be_bytes(chunks[5]),
     };
-    let timer_virtual = Timer {
+    let _timer_virtual = Timer {
         irq_type: u32::from_be_bytes(chunks[6]),
         irq_num: u32::from_be_bytes(chunks[7]),
         irq_flag: u32::from_be_bytes(chunks[8]),
     };
-    let timer_hypervisor = Timer {
+    let _timer_hypervisor = Timer {
         irq_type: u32::from_be_bytes(chunks[9]),
         irq_num: u32::from_be_bytes(chunks[10]),
         irq_flag: u32::from_be_bytes(chunks[11]),

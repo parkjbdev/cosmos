@@ -1,3 +1,4 @@
+#![feature(const_refs_to_static)]
 #![feature(panic_info_message)]
 #![feature(slice_as_chunks)]
 #![feature(strict_provenance)]
@@ -16,40 +17,62 @@ pub mod log;
 pub mod sync;
 
 extern crate log as log_crate;
-use core::alloc::Layout;
-use log_crate::info;
-
-use crate::arch::get_el;
+use core::{alloc::Layout, arch::asm};
 
 #[no_mangle]
-pub(crate) unsafe extern "C" fn loader_main() -> ! {
+pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     log::init();
-    arch::stdout::init();
+    arch::init();
 
-    println!("  _________  _________ ___  ____  _____");
-    println!(" / ___/ __ \\/ ___/ __ `__ \\/ __ \\/ ___/");
-    println!("/ /__/ /_/ (__  ) / / / / / /_/ (__  ) ");
-    println!("\\___/\\____/____/_/ /_/ /_/\\____/____/  ");
+    println!("       _________  _________ ___  ____  _____");
+    println!("      / ___/ __ \\/ ___/ __ `__ \\/ __ \\/ ___/");
+    println!("     / /__/ /_/ (__  ) / / / / / /_/ (__  ) ");
+    println!("     \\___/\\____/____/_/ /_/ /_/\\____/____/  ");
     println!();
 
-    info!("Current Exception Level: EL{}", get_el());
-
-    arch::init();
-    arch::interrupts::init();
-
     println!(
-        "boot_core_stack_start: {:p}",
-        &arch::__boot_core_stack_start
-    );
-    println!(
-        "boot_core_stack_end_exclusive: {:p}",
-        &arch::__boot_core_stack_end_exclusive
-    );
-    println!(
-        "Kernel: [{:p} - {:p}]",
+        "{: <30}: [{:p} ~ {:p}]",
+        "Kernel",
         &arch::kernel_start,
         &arch::kernel_end
     );
+    println!(
+        "{: <30}: [{:p} ~ {:p}]",
+        ".text",
+        &arch::__text_start,
+        &arch::__text_end
+    );
+    println!(
+        "{: <30}: [{:p} ~ {:p}]",
+        ".text._exception_vector_table",
+        &arch::__exception_vector_table_start,
+        &arch::__exception_vector_table_end
+    );
+    println!(
+        "{: <30}: [{:p} - {:p}]",
+        ".bss",
+        &arch::__bss_start,
+        &arch::__bss_end_exclusive
+    );
+    println!(
+        "{: <30}: [{:p} ~ {:p}]",
+        "boot_core_stack_start",
+        &arch::__boot_core_stack_start,
+        &arch::__boot_core_stack_end_exclusive
+    );
+
+    arch::exception::test_sgi();
+
+    arch::exception::test_segfault();
+    // arch::exception::test_svc();
+    // arch::exception::test_exception();
+
+
+    println!("Waiting for interrupts...");
+    unsafe {
+        asm!("wfi");
+    }
+
 
     loop {}
 }
@@ -61,20 +84,14 @@ fn handle_alloc_error(_layout: Layout) -> ! {
 
 #[panic_handler]
 fn handle_panic(info: &core::panic::PanicInfo<'_>) -> ! {
-    println!("KERNEL PANIC!!!");
-
+    log_crate::error!("KERNEL PANIC");
     let (file, line, column) = match info.location() {
         Some(location) => (location.file(), location.line(), location.column()),
         None => ("unknown", 0, 0),
     };
 
-    println!(
-        "[PANIC] {} ({}, line {}, column {})",
-        info.message().unwrap_or(&format_args!("Unknown Error")),
-        file,
-        line,
-        column,
-    );
+    log_crate::error!
+    ("{}:{}:{}", file, line, column);
 
     loop {}
 }

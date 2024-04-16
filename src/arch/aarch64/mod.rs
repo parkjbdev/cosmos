@@ -1,22 +1,23 @@
 pub mod constants;
 pub mod dtb;
-pub mod interrupts;
+pub mod exception;
+pub mod mm;
 pub mod serial;
 pub mod start;
 pub mod state;
 pub mod stdout;
-
 pub use constants::*;
 
 use crate::arch::stdout::COM1;
 use log::info;
 
-extern "C" {
-    pub fn get_el() -> u8;
-}
-
+// Responsible for initializing architecture specific settings
 pub fn init() {
+    stdout::init();
+    exception::init();
+
     let dtb = dtb::get_dtb();
+
     // CPU
     let cpus = dtb.enum_subnodes("/cpus");
     let cpu_cnt = cpus

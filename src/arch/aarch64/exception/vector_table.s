@@ -28,7 +28,7 @@ __vector_\handler:
 .type __vector_\handler, function
 .endm
 
-.section .text
+.section .text._exception_vector_table
 .align  11
 .global vector_table
 vector_table:
