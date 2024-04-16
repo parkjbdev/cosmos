@@ -1,5 +1,5 @@
 CPU := cortex-a76
-CPU_CORE := 4
+CPU_CORE := 1
 RAM_SIZE := 4096
 
 KERNEL := ./target/aarch64-unknown-none-softfloat/debug/cosmos
@@ -19,76 +19,24 @@ ${KERNEL}:
 ${DISK_IMG}:
 	qemu-img create -f ${DISK_FORMAT} ${DISK_IMG} ${DISK_SIZE}
 
-run: el2
-
-el3: ${DISK_IMG} ${KERNEL}
-	@echo ""
-	@echo "CRITICAL WARNING!!: You'd better run at EL2"
-	@echo ""
-
-	@qemu-system-aarch64 -M virt  \
-			-machine virt,gic-version=3,secure=true  \
-      -cpu ${CPU} -smp ${CPU_CORE} -m ${RAM_SIZE}           \
-      -device virtio-scsi-pci,id=scsi0              \
-      -object rng-random,filename=/dev/urandom,id=rng0      \
-      -device virtio-rng-pci,rng=rng0               \
-      -device virtio-net-pci,netdev=net0                \
-      -netdev user,id=net0,hostfwd=tcp::8022-:22            \
-      -semihosting \
-      -display none \
-      -kernel ${KERNEL} \
-      -drive if=virtio,format=${DISK_FORMAT},file=${DISK_IMG}          \
-      -nographic
-
-el2: ${DISK_IMG} ${KERNEL}
-	@qemu-system-aarch64 -M virt  \
+run: ${DISK_IMG} ${KERNEL}
+	@qemu-system-aarch64 \
 			-machine virt,gic-version=3,virtualization=true  \
       -cpu ${CPU} -smp ${CPU_CORE} -m ${RAM_SIZE}           \
-      -device virtio-scsi-pci,id=scsi0              \
-      -object rng-random,filename=/dev/urandom,id=rng0      \
-      -device virtio-rng-pci,rng=rng0               \
-      -device virtio-net-pci,netdev=net0                \
-      -netdev user,id=net0,hostfwd=tcp::8022-:22            \
       -semihosting \
-      -display none \
       -kernel ${KERNEL} \
       -drive if=virtio,format=${DISK_FORMAT},file=${DISK_IMG}          \
-      -nographic
-
-el1: ${DISK_IMG} ${KERNEL}
-	@echo ""
-	@echo "CRITICAL WARNING!!: You'd better run at EL2"
-	@echo ""
-
-	@qemu-system-aarch64 -M virt  \
-			-machine virt,gic-version=3  \
-      -cpu ${CPU} -smp ${CPU_CORE} -m ${RAM_SIZE}           \
-      -device virtio-scsi-pci,id=scsi0              \
-      -object rng-random,filename=/dev/urandom,id=rng0      \
-      -device virtio-rng-pci,rng=rng0               \
-      -device virtio-net-pci,netdev=net0                \
-      -netdev user,id=net0,hostfwd=tcp::8022-:22            \
-      -semihosting \
-      -display none \
-      -device loader,file=${KERNEL} \
-      -drive if=virtio,format=${DISK_FORMAT},file=${DISK_IMG}          \
-      -nographic
+			-nographic -serial mon:stdio
 
 ${DTB_NAME}.dtb:
-	qemu-system-aarch64 -M virt  \
-      -machine virtualization=true -machine virt,gic-version=4  \
+	@qemu-system-aarch64 \
+			-machine virt,gic-version=3,virtualization=true  \
 			-machine dumpdtb=${DTB_NAME}.dtb \
       -cpu ${CPU} -smp ${CPU_CORE} -m ${RAM_SIZE}           \
-      -device virtio-scsi-pci,id=scsi0              \
-      -object rng-random,filename=/dev/urandom,id=rng0      \
-      -device virtio-rng-pci,rng=rng0               \
-      -device virtio-net-pci,netdev=net0                \
-      -netdev user,id=net0,hostfwd=tcp::8022-:22            \
       -semihosting \
-      -display none \
       -kernel ${KERNEL} \
       -drive if=virtio,format=${DISK_FORMAT},file=${DISK_IMG}          \
-      -nographic
+			-nographic -serial mon:stdio
 
 dts: ${DTB_NAME}.dtb
 	dtc -I dtb -O dts ${DTB_NAME}.dtb -o ${DTB_NAME}.dts
