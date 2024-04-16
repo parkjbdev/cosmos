@@ -14,7 +14,7 @@ impl log::Log for Logger {
         if self.enabled(record.metadata()) {
             let level = record.level();
             let args = record.args();
-            println!("[LOADER][{level}] {args}");
+            println!("[{level}] {args}");
         }
     }
 
