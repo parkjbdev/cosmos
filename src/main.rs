@@ -18,6 +18,7 @@ pub mod sync;
 
 extern crate log as log_crate;
 use core::{alloc::Layout, arch::asm};
+use log_crate::error;
 
 #[no_mangle]
 pub(crate) unsafe extern "C" fn kernel_main() -> ! {
@@ -61,18 +62,10 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
         &arch::__boot_core_stack_end_exclusive
     );
 
-    arch::exception::test_sgi();
-
-    arch::exception::test_segfault();
-    // arch::exception::test_svc();
-    // arch::exception::test_exception();
-
-
     println!("Waiting for interrupts...");
     unsafe {
         asm!("wfi");
     }
-
 
     loop {}
 }
@@ -84,14 +77,13 @@ fn handle_alloc_error(_layout: Layout) -> ! {
 
 #[panic_handler]
 fn handle_panic(info: &core::panic::PanicInfo<'_>) -> ! {
-    log_crate::error!("KERNEL PANIC");
+    error!("KERNEL PANIC");
     let (file, line, column) = match info.location() {
         Some(location) => (location.file(), location.line(), location.column()),
         None => ("unknown", 0, 0),
     };
 
-    log_crate::error!
-    ("{}:{}:{}", file, line, column);
+    error!("{}:{}:{}", file, line, column);
 
     loop {}
 }

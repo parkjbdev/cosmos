@@ -13,7 +13,7 @@ use generic_once_cell::OnceCell;
 use log::info;
 
 extern "C" {
-    pub static vector_table: u64;
+    pub static __exception_vector: u64;
     pub fn current_el() -> u8;
 }
 
@@ -34,54 +34,25 @@ pub fn init() {
     info!("Current Exception Level: EL{}", unsafe { current_el() });
 
     unsafe {
-        info!(
-            "Initializing Exception Vector Table: {:p} ~ {:p}",
-            &super::__exception_vector_table_start,
-            &super::__exception_vector_table_end
-        );
-    }
-
-    // unsafe {
-    //     asm!(
-    //         "msr VBAR_EL1, {vector_addr}",
-    //         "isb sy",
-    //         "dsb sy",
-    //         vector_addr = in(reg) &super::__exception_vector_table_start,
-    //         options(nomem, nostack),
-    //     );
-    // }
-
-    // ERROR: If `__exception_vector_table_start` == `__exception_vector_table_end` it panics
-    // successfully, but if not, it will wait forever (maybe) because CPU couldn't find the proper
-    // exception vector table.. `__exception_vector_table_start` == `__exception_vector_table_end`
-    // means that the exception vector table is optimized out by the compiler
-    // If the script below is enabled, compiler won't optimize out the exception vector
-    // table.. since exception vector table is 'KEEP'ed by the linker script now it will never
-    // optimize out the vector table
-
-    // WARNING: This won't retrieve proper address.. why?
-    // Is the sym vector_table retriving proper address of the vector table?
-    // __exception_vector_table_start dismatches sym vector_table..
-
-    // maybe this is right..
-    let vts: u64;
-    unsafe {
         asm!(
                 "adrp x4, {vector_table}",
                 "add  x4, x4, #:lo12:{vector_table}",
                 "msr VBAR_EL1, x4",
                 "isb sy",
                 "dsb sy",
-                vector_table = sym vector_table,
-                out("x4") vts,
+                vector_table = sym __exception_vector,
+                out("x4") _,
                 options(nomem, nostack),
         )
     }
-    println!("vector_table_symbol (hmm..): {:#x}", vts);
 
     let gic = init_gic();
     timer::init_timer(&gic);
+    unsafe { GIC.set(gic).unwrap() };
     irq_enable();
+
+    // test_svc();
+    // test_segfault();
 
     // // Scheduler Interrupt
     // let resched_sgi = IntId::sgi(RESCHED_SGI);
@@ -91,9 +62,8 @@ pub fn init() {
     //     IRQ_NAMES[u32::from(resched_sgi) as usize] = Some("Scheduler");
     // }
 
-    unsafe {
-        GIC.set(gic).unwrap();
-    }
+    // BUG: Why is test_sgi not calling interrupt handler?
+    test_sgi();
 }
 
 fn init_gic() -> GicV3 {
@@ -143,7 +113,6 @@ pub fn test_sgi() {
 
     let gic = unsafe { GIC.get_mut().unwrap() };
     gic.set_interrupt_priority(sgi_id, 0x00);
-    irq_enable();
     gic.enable_interrupt(sgi_id, true);
     GicV3::send_sgi(
         sgi_id,
