@@ -21,9 +21,6 @@ SECTIONS
     __text_start = .;
     KEEP(*(.text._start))
     *(.text._start_cosmos)
-    __exception_vector_table_start = .;
-    KEEP(*(.text._exception_vector_table))
-    __exception_vector_table_end = .;
     *(.text)
     *(.text.*)
     __text_end = .;

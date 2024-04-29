@@ -44,12 +44,6 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
         &arch::__text_end
     );
     println!(
-        "{: <30}: [{:p} ~ {:p}]",
-        ".text._exception_vector_table",
-        &arch::__exception_vector_table_start,
-        &arch::__exception_vector_table_end
-    );
-    println!(
         "{: <30}: [{:p} - {:p}]",
         ".bss",
         &arch::__bss_start,

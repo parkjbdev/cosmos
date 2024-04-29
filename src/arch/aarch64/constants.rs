@@ -9,8 +9,6 @@ extern "C" {
     pub static kernel_end: u64;
     pub static __text_start: u64;
     pub static __text_end: u64;
-    pub static __exception_vector_table_start: u64;
-    pub static __exception_vector_table_end: u64;
     pub static __bss_start: u64;
     pub static __bss_end_exclusive: u64;
 }
