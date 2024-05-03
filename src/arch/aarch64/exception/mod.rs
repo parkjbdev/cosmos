@@ -1,19 +1,23 @@
 pub mod handlers;
 pub mod timer;
+pub mod test;
 
 use crate::sync::spin::RawSpinlock;
 
 use super::dtb::get_dtb;
+use aarch64_cpu::registers::*;
 use arm_gic::{
     gicv3::{GicV3, IntId, SgiTarget},
     irq_enable,
 };
-use core::arch::{asm, global_asm};
+use core::{
+    arch::{asm, global_asm},
+    cell::UnsafeCell,
+};
 use generic_once_cell::OnceCell;
 use log::info;
 
 extern "C" {
-    pub static __exception_vector: u64;
     pub fn current_el() -> u8;
 }
 
@@ -33,17 +37,12 @@ pub fn init() {
     // Set Exception Vector Table
     info!("Current Exception Level: EL{}", unsafe { current_el() });
 
+    extern "Rust" {
+        static __exception_vector: UnsafeCell<()>;
+    }
+
     unsafe {
-        asm!(
-                "adrp x4, {vector_table}",
-                "add  x4, x4, #:lo12:{vector_table}",
-                "msr VBAR_EL1, x4",
-                "isb sy",
-                "dsb sy",
-                vector_table = sym __exception_vector,
-                out("x4") _,
-                options(nomem, nostack),
-        )
+        VBAR_EL1.set(__exception_vector.get() as u64);
     }
 
     let gic = init_gic();
@@ -51,8 +50,7 @@ pub fn init() {
     unsafe { GIC.set(gic).unwrap() };
     irq_enable();
 
-    // test_svc();
-    // test_segfault();
+    test::test_segfault();
 
     // // Scheduler Interrupt
     // let resched_sgi = IntId::sgi(RESCHED_SGI);
@@ -63,7 +61,8 @@ pub fn init() {
     // }
 
     // BUG: Why is test_sgi not calling interrupt handler?
-    test_sgi();
+    // maybe it is sending interrupt to the wrong cpu
+    test::test_sgi();
 }
 
 fn init_gic() -> GicV3 {
@@ -82,52 +81,14 @@ fn init_gic() -> GicV3 {
         "Initializing GIC.. GICD: {:#x} ({:#x}), GICC: {:#x} ({:#x})",
         gicd_start, gicd_size, gicc_start, gicc_size
     );
+
     // error here
     // ptr::write_volatile requires that the pointer argument is aligned and non-null
     // TODO: allocate gicd and gicc to virtualmem
     let mut gic = unsafe { GicV3::new(&mut gicd_start, &mut gicc_start) };
-    GicV3::set_priority_mask(0xff);
     gic.setup();
+    GicV3::set_priority_mask(0xff);
 
     gic
 }
 
-pub fn test_segfault() {
-    let addr: u64 = 4 * 1024 * 1024 * 1024;
-    info!("Trying to read from address {:#}GiB", addr >> 30);
-    unsafe { core::ptr::read_volatile(addr as *mut u64) };
-    info!("Survived");
-
-    let addr: u64 = 8 * 1024 * 1024 * 1024;
-    info!("Trying to read from address {:#}GiB", addr >> 30);
-    unsafe { core::ptr::read_volatile(addr as *mut u64) };
-    info!("Survived");
-}
-
-pub fn test_sgi() {
-    // Testing Interrupt
-    info!("Testing Software Generated Interrupt(SGI)");
-
-    // Configure an SGI(Software Generated Interrupt) and then send it to ourself.
-    let sgi_id = IntId::sgi(3);
-
-    let gic = unsafe { GIC.get_mut().unwrap() };
-    gic.set_interrupt_priority(sgi_id, 0x00);
-    gic.enable_interrupt(sgi_id, true);
-    GicV3::send_sgi(
-        sgi_id,
-        SgiTarget::List {
-            affinity3: 0,
-            affinity2: 0,
-            affinity1: 0,
-            target_list: 0b1,
-        },
-    );
-    info!("SGI(id: {}) Sent", u32::from(sgi_id));
-}
-
-pub fn test_svc() {
-    unsafe {
-        asm!("svc 0x80");
-    }
-}
