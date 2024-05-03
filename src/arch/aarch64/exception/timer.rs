@@ -8,9 +8,9 @@ use aarch64_cpu::{asm::barrier, registers::*};
 use arm_gic::gicv3::{GicV3, IntId};
 use log::{error, info};
 
-use crate::arch::{dtb::get_dtb, state::State};
+use crate::arch::{dtb::get_dtb, state::ExceptionState};
 
-fn timer_handler(_state: &State) -> bool {
+fn timer_handler(_state: &ExceptionState) -> bool {
     info!("Handle Timer Interrupt");
 
     // TODO: Handle timer
