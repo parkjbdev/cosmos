@@ -1,5 +1,10 @@
-use core::arch::asm;
+use core::{
+    arch::asm,
+    num::{NonZeroU32, NonZeroU64},
+    time::Duration,
+};
 
+use aarch64_cpu::{asm::barrier, registers::*};
 use arm_gic::gicv3::{GicV3, IntId};
 use log::{error, info};
 
@@ -24,9 +29,9 @@ pub fn init_timer(gic: &GicV3) {
     let timer_compatible =
         core::str::from_utf8(dtb.get_property("/timer", "compatible").unwrap()).unwrap();
     if !timer_compatible.contains("armv8-timer") {
-        error!("Compatible Timer (armv8-timer) Not Found");
-        return;
+        panic!("Compatible Timer (armv8-timer) Not Found");
     }
+    info!("Timer Compatible: {}", timer_compatible);
     // armv8-timer found..
     // parse timer interrupts
     let timer_interrupts = dtb.get_property("/timer", "interrupts").unwrap();
@@ -74,4 +79,66 @@ impl Timer {
     fn set_prio(self, prio: u8, gic: &GicV3) {
         // gic.set_interrupt_priority(self.to_intid(), prio);
     }
+}
+
+struct JiffyValue(u64);
+
+impl From<JiffyValue> for Duration {
+    fn from(value: JiffyValue) -> Self {
+        let cntfrq = CNTFRQ_EL0.get();
+
+        let secs = value.0 / cntfrq;
+        let nanos = (value.0 % cntfrq * 1_000_000_000 / cntfrq) as u32;
+
+        Duration::new(secs, nanos)
+    }
+}
+
+pub fn resolution() -> Duration {
+    Duration::from(JiffyValue(1))
+}
+
+// #[no_mangle]
+// static ARCH_TIMER_COUNTER_FREQ: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(10_0000_0000) };
+// static ARCH_TIMER_COUNTER_FREQ: u32 = 123;
+
+#[inline(always)]
+pub fn uptime() -> Duration {
+    barrier::isb(barrier::SY);
+    uptime_unsafe()
+}
+
+fn uptime_unsafe() -> Duration {
+    let jiffies = get_jiffies_unsafe();
+
+    let cntfrq = CNTFRQ_EL0.get();
+
+    let secs = jiffies / cntfrq;
+    let nanos = (jiffies % cntfrq * 1_000_000_000 / cntfrq) as u32;
+
+    let duration = Duration::new(secs, nanos);
+    duration
+}
+
+fn get_jiffies_unsafe() -> u64 {
+    CNTPCT_EL0.get()
+}
+
+pub fn get_jiffies() -> u64 {
+    barrier::isb(barrier::SY);
+    get_jiffies_unsafe()
+}
+
+pub fn nsleep(ns: u64) {
+    barrier::isb(barrier::SY);
+    let end = uptime_unsafe() + Duration::from_nanos(ns);
+    while uptime_unsafe() < end {}
+}
+
+pub fn sleep(sec: u64) {
+    nsleep(sec * 1_000_000_000)
+}
+
+pub fn msleep(ms: u64) {
+    nsleep(ms * 1_000_000)
 }

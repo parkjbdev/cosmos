@@ -18,12 +18,16 @@ pub mod sync;
 
 extern crate log as log_crate;
 use core::{alloc::Layout, arch::asm};
-use log_crate::error;
+use log_crate::{error, info};
+
+use crate::arch::exception::timer::{msleep, resolution, sleep};
 
 #[no_mangle]
 pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     log::init();
     arch::init();
+
+    info!("Timer Resolution: {}ns", resolution().as_nanos());
 
     println!("       _________  _________ ___  ____  _____");
     println!("      / ___/ __ \\/ ___/ __ `__ \\/ __ \\/ ___/");
@@ -55,13 +59,15 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
         &arch::__boot_core_stack_start,
         &arch::__boot_core_stack_end_exclusive
     );
-
-    println!("Waiting for interrupts...");
-    unsafe {
-        asm!("wfi");
+    loop {
+        info!("Spinning 1sec");
+        sleep(1);
     }
 
-    loop {}
+    println!("Waiting for interrupts...");
+    // unsafe {
+    //     asm!("wfi");
+    // }
 }
 
 #[alloc_error_handler]

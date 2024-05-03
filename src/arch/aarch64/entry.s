@@ -46,6 +46,19 @@ _start:
   ADR_REL x0, __boot_core_stack_end_exclusive
 	mov		sp, x0
 
+  // Setting Jiffies 
+  mrs x2, CNTFRQ_EL0
+  cmp x2, xzr
+  b.eq .L_parking_loop
+
+  // adrp x1, ARCH_TIMER_COUNTER_FREQ 
+  // add x1, x1, #:lo12:ARCH_TIMER_COUNTER_FREQ
+
+  // str w2, [x1]
+
+  // mov x1, 0x1000
+  // msr CNTFRQ_EL0, x1 
+
 	// Jump to Rust code.
 	b	_start_cosmos
 
