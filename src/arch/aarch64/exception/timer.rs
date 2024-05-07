@@ -1,30 +1,15 @@
-use core::{
-    arch::asm,
-    num::{NonZeroU32, NonZeroU64},
-    time::Duration,
-};
+use core::{arch::asm, time::Duration};
 
 use aarch64_cpu::{asm::barrier, registers::*};
-use arm_gic::gicv3::{GicV3, IntId};
-use log::{error, info};
+use log::info;
 
-use crate::arch::{dtb::get_dtb, state::ExceptionState};
+use crate::arch::{
+    dtb::get_dtb,
+    exception::{Interrupt, RawInterrupt},
+    state::ExceptionState,
+};
 
-fn timer_handler(_state: &ExceptionState) -> bool {
-    info!("Handle Timer Interrupt");
-
-    // TODO: Handle timer
-    unsafe {
-        asm!(
-            "msr cntp_cval_el0, xzr",
-            "msr cntp_ctl_el0, xzr",
-            options(nostack, nomem)
-        );
-    }
-    true
-}
-
-pub fn init_timer(gic: &GicV3) {
+pub fn init_timer() {
     let dtb = get_dtb();
     let timer_compatible =
         core::str::from_utf8(dtb.get_property("/timer", "compatible").unwrap()).unwrap();
@@ -38,47 +23,52 @@ pub fn init_timer(gic: &GicV3) {
     const SPLIT_SIZE: usize = core::mem::size_of::<u32>();
 
     let chunks: &[[u8; SPLIT_SIZE]] = unsafe { timer_interrupts.as_chunks_unchecked() };
-    let _timer_secure = Timer {
+    let _timer_secure: Interrupt = RawInterrupt {
         irq_type: u32::from_be_bytes(chunks[0]),
-        irq_num: u32::from_be_bytes(chunks[1]),
-        irq_flag: u32::from_be_bytes(chunks[2]),
-    };
-    let _timer_nonsecure = Timer {
+        id: u32::from_be_bytes(chunks[1]),
+        trigger: u32::from_be_bytes(chunks[2]),
+        prio: 0x00,
+    }
+    .into();
+    let _timer_nonsecure: Interrupt = RawInterrupt {
         irq_type: u32::from_be_bytes(chunks[3]),
-        irq_num: u32::from_be_bytes(chunks[4]),
-        irq_flag: u32::from_be_bytes(chunks[5]),
-    };
-    let _timer_virtual = Timer {
+        id: u32::from_be_bytes(chunks[4]),
+        trigger: u32::from_be_bytes(chunks[5]),
+        prio: 0x00,
+    }
+    .into();
+    let _timer_virtual: Interrupt = RawInterrupt {
         irq_type: u32::from_be_bytes(chunks[6]),
-        irq_num: u32::from_be_bytes(chunks[7]),
-        irq_flag: u32::from_be_bytes(chunks[8]),
-    };
-    let _timer_hypervisor = Timer {
+        id: u32::from_be_bytes(chunks[7]),
+        trigger: u32::from_be_bytes(chunks[8]),
+        prio: 0x00,
+    }
+    .into();
+    let _timer_hypervisor: Interrupt = RawInterrupt {
         irq_type: u32::from_be_bytes(chunks[9]),
-        irq_num: u32::from_be_bytes(chunks[10]),
-        irq_flag: u32::from_be_bytes(chunks[11]),
-    };
+        id: u32::from_be_bytes(chunks[10]),
+        trigger: u32::from_be_bytes(chunks[11]),
+        prio: 0x00,
+    }
+    .into();
+
+    _timer_nonsecure.register_gic();
+    _timer_nonsecure.enable();
+    // _timer_nonsecure.disable();
 }
 
-pub struct Timer {
-    irq_type: u32,
-    irq_num: u32,
-    irq_flag: u32,
-}
+fn timer_handler(_state: &ExceptionState) -> bool {
+    info!("Handle Timer Interrupt");
 
-impl Timer {
-    fn to_intid(self) -> IntId {
-        if self.irq_type == 0 {
-            IntId::spi(self.irq_num)
-        } else if self.irq_type == 1 {
-            IntId::ppi(self.irq_num)
-        } else {
-            IntId::sgi(self.irq_num)
-        }
+    // TODO: Handle timer
+    unsafe {
+        asm!(
+            "msr cntp_cval_el0, xzr",
+            "msr cntp_ctl_el0, xzr",
+            options(nostack, nomem)
+        );
     }
-    fn set_prio(self, prio: u8, gic: &GicV3) {
-        // gic.set_interrupt_priority(self.to_intid(), prio);
-    }
+    true
 }
 
 struct JiffyValue(u64);
@@ -124,21 +114,25 @@ fn get_jiffies_unsafe() -> u64 {
     CNTPCT_EL0.get()
 }
 
+#[allow(dead_code)]
 pub fn get_jiffies() -> u64 {
     barrier::isb(barrier::SY);
     get_jiffies_unsafe()
 }
 
+#[allow(dead_code)]
 pub fn nsleep(ns: u64) {
     barrier::isb(barrier::SY);
     let end = uptime_unsafe() + Duration::from_nanos(ns);
     while uptime_unsafe() < end {}
 }
 
+#[allow(dead_code)]
 pub fn sleep(sec: u64) {
     nsleep(sec * 1_000_000_000)
 }
 
+#[allow(dead_code)]
 pub fn msleep(ms: u64) {
     nsleep(ms * 1_000_000)
 }

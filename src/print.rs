@@ -1,12 +1,10 @@
 #[cfg(target_os = "none")]
 #[doc(hidden)]
 pub fn _print(args: core::fmt::Arguments<'_>) {
-    use crate::console;
-    use core::fmt::Write;
+    use crate::console::{Console, CONSOLE};
 
-    unsafe {
-        console::CONSOLE.write_fmt(args).unwrap();
-    }
+    let console = unsafe { CONSOLE.get_mut().unwrap() };
+    console.write_fmt(args).unwrap();
 }
 
 ///

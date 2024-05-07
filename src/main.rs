@@ -17,10 +17,13 @@ pub mod log;
 pub mod sync;
 
 extern crate log as log_crate;
-use core::{alloc::Layout, arch::asm};
+use core::alloc::Layout;
 use log_crate::{error, info};
 
-use crate::arch::exception::timer::{msleep, resolution, sleep};
+use crate::{
+    arch::exception::timer::{resolution, sleep},
+    console::{Console, CONSOLE},
+};
 
 #[no_mangle]
 pub(crate) unsafe extern "C" fn kernel_main() -> ! {
@@ -60,15 +63,24 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
         &arch::__boot_core_stack_end_exclusive
     );
 
+    println!("Waiting for input");
+
+    let console = CONSOLE.get_mut().unwrap();
+    console.clear_rx();
+
+    loop {
+        let c = console.read_char();
+        console.write_char(c);
+
+        if c == '\n' {
+            break;
+        }
+    }
+
     loop {
         info!("Spinning 1sec");
         sleep(1);
     }
-
-    // println!("Waiting for interrupts...");
-    // unsafe {
-    //     asm!("wfi");
-    // }
 }
 
 #[alloc_error_handler]

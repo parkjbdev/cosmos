@@ -1,14 +1,10 @@
-use core::fmt;
+pub use super::arch::console::CONSOLE;
+use core::fmt::{Arguments, Result};
 
-pub struct Console(());
-
-impl fmt::Write for Console {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        for byte in s.bytes() {
-            crate::arch::stdout::output_message_byte(byte);
-        }
-        Ok(())
-    }
+pub trait Console {
+    fn write_fmt(&mut self, args: Arguments) -> Result;
+    fn write_char(&mut self, c: char);
+    fn flush(&self);
+    fn read_char(&mut self) -> char;
+    fn clear_rx(&mut self);
 }
-
-pub static mut CONSOLE: Console = Console(());

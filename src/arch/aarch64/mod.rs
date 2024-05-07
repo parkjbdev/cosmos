@@ -5,18 +5,18 @@ pub mod mm;
 pub mod serial;
 pub mod start;
 pub mod state;
-pub mod stdout;
+pub mod console;
+pub mod pl011;
 pub use constants::*;
 
-use crate::arch::stdout::COM1;
 use log::info;
 
 // Responsible for initializing architecture specific settings
 pub fn init() {
-    stdout::init();
-    exception::init();
+    let dtb = &dtb::get_dtb();
 
-    let dtb = dtb::get_dtb();
+    console::init(dtb);
+    exception::init(dtb);
 
     // CPU
     let cpus = dtb.enum_subnodes("/cpus");
@@ -24,10 +24,6 @@ pub fn init() {
         .filter(|cpu| cpu.split('@').next().unwrap() == "cpu")
         .count();
     info!("CPU Count: {} CPUs", cpu_cnt);
-
-    // UART
-    let uart_addr: u32 = unsafe { COM1.get_port() };
-    info!("UART ADDR: {:#x}", uart_addr);
 
     // RAM
     let mem_devt = dtb.get_property("/memory", "device_type").unwrap();
