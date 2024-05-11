@@ -1,38 +1,33 @@
 #![allow(dead_code)]
-use crate::arch::state::ExceptionState;
+
+use crate::arch::{
+    exception::{IRQ_HANDLERS, IRQ_NAMES},
+    state::ExceptionState,
+};
 use aarch64_cpu::registers::*;
+use arm_gic::gicv3::GicV3;
 
 /* Current EL with SP0 */
 // Exception is taken from EL1 while stack pointer was shared with EL0.
 // This happens when `SPSel` register holds the value 0
 #[no_mangle]
 extern "C" fn handle_el1t_sync(state: &ExceptionState) -> *mut usize {
-    println!("{}", state);
     panic!("handle_el1t_sync Called!");
-
-    core::ptr::null_mut()
 }
+
 #[no_mangle]
 extern "C" fn handle_el1t_irq(state: &ExceptionState) -> *mut usize {
-    println!("{}", state);
     panic!("handle_el1t_irq Called!");
-
-    core::ptr::null_mut()
 }
+
 #[no_mangle]
 extern "C" fn handle_el1t_fiq(state: &ExceptionState) -> *mut usize {
-    println!("{}", state);
     panic!("handle_el1t_fiq Called!");
-
-    core::ptr::null_mut()
 }
 
 #[no_mangle]
 extern "C" fn handle_el1t_err(state: &ExceptionState) -> *mut usize {
-    println!("{}", state);
     panic!("handle_el1t_err Called!");
-
-    core::ptr::null_mut()
 }
 
 /* Current EL with SPx */
@@ -42,9 +37,13 @@ extern "C" fn handle_el1t_err(state: &ExceptionState) -> *mut usize {
 extern "C" fn handle_el1h_sync(state: &mut ExceptionState) -> *mut usize {
     println!();
     println!("*** HANDLE_EL1H_SYNC ExceptionState ***");
+    println!("FAR_EL1: {:#018x}", FAR_EL1.get());
     println!("{}", state);
 
+    // Surviving from test_segfault
     if FAR_EL1.get() == 8 * 1024 * 1024 * 1024 {
+        FAR_EL1.set(0);
+        println!("Resetting FAR_EL1 as {:#018x}", FAR_EL1.get());
         println!("reviving from test_segfault\n");
         state.elr_el1 += 4;
         return core::ptr::null_mut();
@@ -53,24 +52,33 @@ extern "C" fn handle_el1h_sync(state: &mut ExceptionState) -> *mut usize {
     panic!("handle_el1h_sync Called!");
 }
 
-#[no_mangle]
-extern "C" fn handle_el1h_irq(state: &mut ExceptionState) -> *mut usize {
-    println!();
-    println!("*** HANDLE_EL1H_IRQ ExceptionState ***");
+fn handle_interrupt(state: &ExceptionState) {
     println!("{}", state);
 
-    // state.elr_el1 += 4;
-    // return core::ptr::null_mut();
-    panic!("handle_el1h_irq Called!");
+    if let Some(irqid) = GicV3::get_and_acknowledge_interrupt() {
+        let id: u32 = irqid.into();
+        let name = unsafe { IRQ_NAMES[id as usize].unwrap_or("Unnamed IRQ") };
+        let handler = unsafe { IRQ_HANDLERS[id as usize].unwrap() };
+
+        println!("Received IRQ name: {} ({:?})", name, irqid);
+        handler(&state);
+    }
+}
+
+#[no_mangle]
+extern "C" fn handle_el1h_irq(state: &ExceptionState) -> *mut usize {
+    println!();
+    println!("*** HANDLE_EL1H_IRQ ExceptionState ***");
+    handle_interrupt(state);
+    core::ptr::null_mut()
 }
 
 #[no_mangle]
 extern "C" fn handle_el1h_fiq(state: &ExceptionState) -> *mut usize {
-    println!("{}", state);
-
-    // state.elr_el1 += 4;
-    // return core::ptr::null_mut();
-    panic!("handle_el1h_fiq Called!");
+    println!();
+    println!("*** HANDLE_EL1H_FIQ ExceptionState ***");
+    handle_interrupt(state);
+    core::ptr::null_mut()
 }
 
 #[no_mangle]

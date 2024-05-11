@@ -1,17 +1,19 @@
 pub mod handlers;
+pub mod sgi;
 pub mod test;
 pub mod timer;
 
+use super::state::ExceptionState;
 use crate::sync::spin::RawSpinlock;
-
 use aarch64_cpu::registers::*;
+use arm_gic::gicv3::Trigger;
 use arm_gic::{
     gicv3::{GicV3, IntId},
     irq_enable,
 };
-use hermit_dtb::Dtb;
 use core::{arch::global_asm, cell::UnsafeCell};
 use generic_once_cell::OnceCell;
+use hermit_dtb::Dtb;
 use log::info;
 
 extern "C" {
@@ -20,13 +22,11 @@ extern "C" {
 
 global_asm!(include_str!("vector_table.s"));
 
-// const MAX_HANDLERS: usize = 1024;
+const MAX_HANDLERS: usize = 1024;
 
-// type Handler = fn(state: &State) -> bool;
-// static mut IRQ_NAMES: [Option<&'static str>; MAX_HANDLERS] = [None; MAX_HANDLERS];
-// static mut IRQ_HANDLERS: [Option<Handler>; MAX_HANDLERS] = [None; MAX_HANDLERS];
-// static mut TIMER_INTERRUPT: IntId = IntId::sgi(0);
-// const RESCHED_SGI: u32 = 1;
+type Handler = fn(state: &ExceptionState) -> bool;
+static mut IRQ_NAMES: [Option<&'static str>; MAX_HANDLERS] = [None; MAX_HANDLERS];
+static mut IRQ_HANDLERS: [Option<Handler>; MAX_HANDLERS] = [None; MAX_HANDLERS];
 
 pub(crate) static mut GIC: OnceCell<RawSpinlock, GicV3> = OnceCell::new();
 
@@ -46,10 +46,11 @@ pub fn init(dtb: &Dtb) {
     let gic = init_gic(dtb);
     unsafe { GIC.set(gic).unwrap() };
 
-    timer::init_timer();
     irq_enable();
 
+    timer::init_timer();
     test::test_segfault();
+    test::test_sgi();
 
     // // Scheduler Interrupt
     // let resched_sgi = IntId::sgi(RESCHED_SGI);
@@ -58,10 +59,6 @@ pub fn init(dtb: &Dtb) {
     // unsafe {
     //     IRQ_NAMES[u32::from(resched_sgi) as usize] = Some("Scheduler");
     // }
-
-    // BUG: Why is test_sgi not calling interrupt handler?
-    // maybe it is sending interrupt to the wrong cpu
-    test::test_sgi();
 }
 
 fn init_gic(dtb: &Dtb) -> GicV3 {
@@ -92,78 +89,91 @@ fn init_gic(dtb: &Dtb) -> GicV3 {
         gicd_start, gicd_size, gicr_start, gicr_size
     );
 
-    // error here
-    // ptr::write_volatile requires that the pointer argument is aligned and non-null
+    let gicd_start: *mut u64 = gicd_start as _;
+    let gicr_start: *mut u64 = gicr_start as _;
+
     // TODO: allocate gicd and gicr to virtualmem
-    let mut gic = unsafe { GicV3::new(&mut gicd_start, &mut gicr_start) };
+    let mut gic = unsafe { GicV3::new(gicd_start, gicr_start) };
     gic.setup();
     GicV3::set_priority_mask(0xff);
 
     gic
 }
 
-use arm_gic::gicv3::Trigger;
-
-pub struct RawInterrupt {
-    pub irq_type: u32,
-    pub id: u32,
-    pub trigger: u32,
+pub struct Interrupt {
+    pub id: IntId,
+    pub trigger: Trigger,
     pub prio: u8,
+    pub handler: Handler,
+    pub name: &'static str,
 }
 
-impl From<RawInterrupt> for Interrupt {
-    fn from(raw: RawInterrupt) -> Self {
+#[allow(dead_code)]
+impl Interrupt {
+    fn raw_new(
+        irq_type: u32,
+        id: u32,
+        trigger: u32,
+        prio: u8,
+        name: &'static str,
+        handler: Handler,
+    ) -> Self {
         // Interrupt ID
-        let irq_id = if raw.irq_type == 0 {
-            IntId::spi(raw.id)
-        } else if raw.irq_type == 1 {
-            IntId::ppi(raw.id)
-        } else {
-            IntId::sgi(raw.id)
+        let irq_id = match irq_type {
+            0 => IntId::spi(id),
+            1 => IntId::ppi(id),
+            _ => IntId::sgi(id),
         };
 
         // Set Trigger Type from Flag
-        let irq_flag = if raw.trigger == 4 || raw.trigger == 8 {
+        let irq_flag = if trigger == 4 || trigger == 8 {
             Trigger::Level
-        } else if raw.trigger == 2 || raw.trigger == 1 {
+        } else if trigger == 2 || trigger == 1 {
             Trigger::Edge
         } else {
             panic!("Invalid interrupt level!");
         };
 
-        Interrupt {
+        Self {
             id: irq_id,
             trigger: irq_flag,
-            prio: raw.prio,
-            irq_type: raw.irq_type,
+            prio,
+            handler,
+            name,
         }
     }
-}
 
-pub struct Interrupt {
-    pub irq_type: u32,
-    pub id: IntId,
-    pub trigger: Trigger,
-    pub prio: u8,
-}
+    fn new(id: IntId, trigger: Trigger, prio: u8, name: &'static str, handler: Handler) -> Self {
+        Self {
+            id,
+            trigger,
+            prio,
+            handler,
+            name,
+        }
+    }
 
-impl Interrupt {
-    fn register_gic(&self) {
+    fn register(&self) {
         let gic = unsafe { GIC.get_mut().unwrap() };
 
         gic.set_trigger(self.id, self.trigger);
         gic.set_interrupt_priority(self.id, self.prio);
+
+        let id = u32::from(self.id) as usize;
+
+        unsafe {
+            IRQ_NAMES[id] = Some(self.name);
+            IRQ_HANDLERS[id] = Some(self.handler);
+        }
     }
 
     fn enable(&self) {
         let gic = unsafe { GIC.get_mut().unwrap() };
-
         gic.enable_interrupt(self.id, true);
     }
 
     fn disable(&self) {
         let gic = unsafe { GIC.get_mut().unwrap() };
-
         gic.enable_interrupt(self.id, false);
     }
 }

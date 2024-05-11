@@ -3,11 +3,7 @@ use core::{arch::asm, time::Duration};
 use aarch64_cpu::{asm::barrier, registers::*};
 use log::info;
 
-use crate::arch::{
-    dtb::get_dtb,
-    exception::{Interrupt, RawInterrupt},
-    state::ExceptionState,
-};
+use crate::arch::{dtb::get_dtb, exception::Interrupt, state::ExceptionState};
 
 pub fn init_timer() {
     let dtb = get_dtb();
@@ -17,44 +13,45 @@ pub fn init_timer() {
         panic!("Compatible Timer (armv8-timer) Not Found");
     }
     info!("Timer Compatible: {}", timer_compatible);
-    // armv8-timer found..
-    // parse timer interrupts
     let timer_interrupts = dtb.get_property("/timer", "interrupts").unwrap();
     const SPLIT_SIZE: usize = core::mem::size_of::<u32>();
 
     let chunks: &[[u8; SPLIT_SIZE]] = unsafe { timer_interrupts.as_chunks_unchecked() };
-    let _timer_secure: Interrupt = RawInterrupt {
-        irq_type: u32::from_be_bytes(chunks[0]),
-        id: u32::from_be_bytes(chunks[1]),
-        trigger: u32::from_be_bytes(chunks[2]),
-        prio: 0x00,
-    }
-    .into();
-    let _timer_nonsecure: Interrupt = RawInterrupt {
-        irq_type: u32::from_be_bytes(chunks[3]),
-        id: u32::from_be_bytes(chunks[4]),
-        trigger: u32::from_be_bytes(chunks[5]),
-        prio: 0x00,
-    }
-    .into();
-    let _timer_virtual: Interrupt = RawInterrupt {
-        irq_type: u32::from_be_bytes(chunks[6]),
-        id: u32::from_be_bytes(chunks[7]),
-        trigger: u32::from_be_bytes(chunks[8]),
-        prio: 0x00,
-    }
-    .into();
-    let _timer_hypervisor: Interrupt = RawInterrupt {
-        irq_type: u32::from_be_bytes(chunks[9]),
-        id: u32::from_be_bytes(chunks[10]),
-        trigger: u32::from_be_bytes(chunks[11]),
-        prio: 0x00,
-    }
-    .into();
+    let _timer_secure: Interrupt = Interrupt::raw_new(
+        u32::from_be_bytes(chunks[0]),
+        u32::from_be_bytes(chunks[1]),
+        u32::from_be_bytes(chunks[2]),
+        0x00,
+        "Secure Timer",
+        |state| true,
+    );
+    let _timer_nonsecure: Interrupt = Interrupt::raw_new(
+        u32::from_be_bytes(chunks[3]),
+        u32::from_be_bytes(chunks[4]),
+        u32::from_be_bytes(chunks[5]),
+        0x00,
+        "NonSecure Timer",
+        |state| true,
+    );
+    let _timer_virtual: Interrupt = Interrupt::raw_new(
+        u32::from_be_bytes(chunks[6]),
+        u32::from_be_bytes(chunks[7]),
+        u32::from_be_bytes(chunks[8]),
+        0x00,
+        "Virtual Timer",
+        |state| true,
+    );
+    let _timer_hypervisor: Interrupt = Interrupt::raw_new(
+        u32::from_be_bytes(chunks[9]),
+        u32::from_be_bytes(chunks[10]),
+        u32::from_be_bytes(chunks[11]),
+        0x00,
+        "Hypervisor Timer",
+        |state| true,
+    );
 
-    _timer_nonsecure.register_gic();
+    _timer_nonsecure.register();
     _timer_nonsecure.enable();
-    // _timer_nonsecure.disable();
 }
 
 fn timer_handler(_state: &ExceptionState) -> bool {

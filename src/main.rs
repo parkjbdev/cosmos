@@ -70,7 +70,8 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
 
     loop {
         let c = console.read_char();
-        console.write_char(c);
+        // console.write_char(c);
+        info!("Read: {}", c);
 
         if c == '\n' {
             break;

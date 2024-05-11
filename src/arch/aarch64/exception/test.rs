@@ -1,9 +1,6 @@
-use core::arch::asm;
-
-use arm_gic::gicv3::{GicV3, IntId, SgiTarget};
+use crate::arch::{exception::sgi, state::ExceptionState};
+use arm_gic::gicv3::IntId;
 use log::info;
-
-use crate::arch::exception::GIC;
 
 pub fn test_segfault() {
     let addr: u64 = 4 * 1024 * 1024 * 1024;
@@ -17,54 +14,18 @@ pub fn test_segfault() {
     info!("Survived");
 }
 
-struct Sgi(u32);
-impl Sgi {
-    pub fn new(id: u32) -> Self {
-        Self(id)
-    }
-    pub fn enable(&self, gic: &mut GicV3, prio: u8) {
-        gic.enable_interrupt(IntId::sgi(self.0), true);
-    }
-    pub fn disable(&self, gic: &mut GicV3) {
-        gic.enable_interrupt(IntId::sgi(self.0), false);
-    }
-    pub fn set_priority(&self, gic: &mut GicV3, prio: u8) {
-        gic.set_interrupt_priority(IntId::sgi(self.0), prio);
-    }
-    pub fn send(&self, target: SgiTarget) {
-        GicV3::send_sgi(IntId::sgi(self.0), target);
-    }
-}
-
 pub fn test_sgi() {
     // Testing Interrupt
     info!("Testing Software Generated Interrupt(SGI)");
 
+    fn test_sgi_handler(state: &ExceptionState) -> bool {
+        println!("test_sgi handler called");
+        true
+    }
+
     // Configure an SGI(Software Generated Interrupt) and then send it to ourself.
-    let sgi_id = IntId::sgi(3);
+    let sgi = sgi::SGI::new(3, 0x00, test_sgi_handler, "test");
 
-    let gic = unsafe { GIC.get_mut().unwrap() };
-    gic.set_interrupt_priority(sgi_id, 0x00);
-    gic.enable_interrupt(sgi_id, true);
-
-    unsafe {
-        asm!("dsb nsh", "isb", options(nostack, nomem, preserves_flags));
-    }
-
-    GicV3::send_sgi(
-        sgi_id,
-        SgiTarget::List {
-            affinity3: 0,
-            affinity2: 0,
-            affinity1: 0,
-            target_list: 0b1,
-        },
-    );
-    info!("SGI(id: {}) Sent", u32::from(sgi_id));
-}
-
-pub fn test_svc() {
-    unsafe {
-        asm!("svc 0x80");
-    }
+    sgi::register_sgi(sgi);
+    sgi::send_sgi(3);
 }

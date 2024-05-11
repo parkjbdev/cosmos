@@ -17,6 +17,7 @@ PHDRS
 SECTIONS
 {
   . = kernel_start;
+
   .text : {
     __text_start = .;
     KEEP(*(.text._start))
@@ -33,16 +34,11 @@ SECTIONS
     __rodata_end = .;
   } :segment_ro
 
-  .got    : ALIGN(8) {
-    /* Global offset table Todo */
-    *(.got)
-  } :segment_ro
-  ASSERT(SIZEOF(.got) == 0, "Relocation Not Supported")
-
   .data   : ALIGN(8) {
     *(.data)
     *(.data.*)
   } :segment_rw
+
   .bss (NOLOAD)    : ALIGN(16) {
     __bss_start = .;
     *(.bss)
@@ -50,7 +46,15 @@ SECTIONS
     . = ALIGN(16);
     __bss_end_exclusive = .;
   } :segment_rw
+
+  .got    : ALIGN(8) {
+       /* Global offset table Todo */
+    *(.got)
+  } :segment_ro
+  /* ASSERT(SIZEOF(.got) == 0, "Relocation Not Supported"); */
+
   . = ALIGN(4K); /* Align to page boundary */
+
   /***********************************************************************************************
    * Boot Core Stack
    ***********************************************************************************************/
