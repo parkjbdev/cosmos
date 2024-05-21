@@ -1,17 +1,15 @@
 pub mod handlers;
-pub mod sgi;
+// pub mod sgi;
+pub mod irq;
 pub mod test;
 pub mod timer;
 
 use super::state::ExceptionState;
-use crate::sync::spin::RawSpinlock;
+use crate::{arch::exception::irq::Interrupt, sync::spin::RawSpinlock};
 use aarch64_cpu::registers::*;
-use arm_gic::gicv3::Trigger;
-use arm_gic::{
-    gicv3::{GicV3, IntId},
-    irq_enable,
-};
-use core::{arch::global_asm, cell::UnsafeCell};
+use arm_gic::{gicv3::GicV3, irq_disable, irq_enable};
+use core::arch::{asm, global_asm};
+use core::cell::UnsafeCell;
 use generic_once_cell::OnceCell;
 use hermit_dtb::Dtb;
 use log::info;
@@ -25,12 +23,14 @@ global_asm!(include_str!("vector_table.s"));
 const MAX_HANDLERS: usize = 1024;
 
 type Handler = fn(state: &ExceptionState) -> bool;
+
 static mut IRQ_NAMES: [Option<&'static str>; MAX_HANDLERS] = [None; MAX_HANDLERS];
 static mut IRQ_HANDLERS: [Option<Handler>; MAX_HANDLERS] = [None; MAX_HANDLERS];
 
 pub(crate) static mut GIC: OnceCell<RawSpinlock, GicV3> = OnceCell::new();
 
 pub fn init(dtb: &Dtb) {
+    irq_disable();
     // Set Exception Vector Table
     info!("Current Exception Level: EL{}", unsafe { current_el() });
 
@@ -46,19 +46,27 @@ pub fn init(dtb: &Dtb) {
     let gic = init_gic(dtb);
     unsafe { GIC.set(gic).unwrap() };
 
-    irq_enable();
-
     timer::init_timer();
+
     test::test_segfault();
     test::test_sgi();
 
-    // // Scheduler Interrupt
-    // let resched_sgi = IntId::sgi(RESCHED_SGI);
-    // gic.set_interrupt_priority(resched_sgi, 0x00);
-    // gic.enable_interrupt(resched_sgi, true);
-    // unsafe {
-    //     IRQ_NAMES[u32::from(resched_sgi) as usize] = Some("Scheduler");
-    // }
+    // Scheduler Interrupt
+    const RESCHED_SGI: u32 = 0;
+    let scheduler = Interrupt::new(
+        RESCHED_SGI,
+        1,
+        0x00,
+        Some(|state| {
+            println!("Scheduler Interrupt");
+            true
+        }),
+        Some("Scheduler"),
+    )
+    .register()
+    .enable();
+
+    irq_enable();
 }
 
 fn init_gic(dtb: &Dtb) -> GicV3 {
@@ -100,80 +108,42 @@ fn init_gic(dtb: &Dtb) -> GicV3 {
     gic
 }
 
-pub struct Interrupt {
-    pub id: IntId,
-    pub trigger: Trigger,
-    pub prio: u8,
-    pub handler: Handler,
-    pub name: &'static str,
+pub fn mask_irq() {
+    unsafe {
+        asm!(
+            "msr DAIFSet, {0}",
+            const 0b0010,
+            options(nostack, nomem, preserves_flags)
+        );
+    }
 }
 
-#[allow(dead_code)]
-impl Interrupt {
-    fn raw_new(
-        irq_type: u32,
-        id: u32,
-        trigger: u32,
-        prio: u8,
-        name: &'static str,
-        handler: Handler,
-    ) -> Self {
-        // Interrupt ID
-        let irq_id = match irq_type {
-            0 => IntId::spi(id),
-            1 => IntId::ppi(id),
-            _ => IntId::sgi(id),
-        };
-
-        // Set Trigger Type from Flag
-        let irq_flag = if trigger == 4 || trigger == 8 {
-            Trigger::Level
-        } else if trigger == 2 || trigger == 1 {
-            Trigger::Edge
-        } else {
-            panic!("Invalid interrupt level!");
-        };
-
-        Self {
-            id: irq_id,
-            trigger: irq_flag,
-            prio,
-            handler,
-            name,
-        }
+pub fn unmask_irq() {
+    unsafe {
+        asm!(
+            "msr DAIFClr, {0}",
+            const 0b0010,
+            options(nostack, nomem, preserves_flags)
+        );
     }
+}
 
-    fn new(id: IntId, trigger: Trigger, prio: u8, name: &'static str, handler: Handler) -> Self {
-        Self {
-            id,
-            trigger,
-            prio,
-            handler,
-            name,
-        }
+pub fn set_irq(daif: u64) {
+    unsafe {
+        asm!(
+            "msr DAIFSet, {0}",
+            in(reg) daif,
+            options(nostack, nomem, preserves_flags)
+        );
     }
+}
 
-    fn register(&self) {
-        let gic = unsafe { GIC.get_mut().unwrap() };
-
-        gic.set_trigger(self.id, self.trigger);
-        gic.set_interrupt_priority(self.id, self.prio);
-
-        let id = u32::from(self.id) as usize;
-
-        unsafe {
-            IRQ_NAMES[id] = Some(self.name);
-            IRQ_HANDLERS[id] = Some(self.handler);
-        }
-    }
-
-    fn enable(&self) {
-        let gic = unsafe { GIC.get_mut().unwrap() };
-        gic.enable_interrupt(self.id, true);
-    }
-
-    fn disable(&self) {
-        let gic = unsafe { GIC.get_mut().unwrap() };
-        gic.enable_interrupt(self.id, false);
-    }
+pub fn exec_with_irq_disabled<F, R>(f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    let daif = DAIF.get();
+    let ret = f();
+    set_irq(daif);
+    ret
 }

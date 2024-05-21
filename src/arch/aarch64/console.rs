@@ -7,7 +7,6 @@ use generic_once_cell::OnceCell;
 use super::constants::SERIAL_PORT_ADDRESS;
 use super::pl011::PL011Uart;
 
-// pub static mut CONSOLE: Option<dyn Console> = unsafe { None() };
 pub static mut CONSOLE: OnceCell<RawSpinlock, PL011Uart> = OnceCell::new();
 
 pub fn init(dtb: &Dtb) {

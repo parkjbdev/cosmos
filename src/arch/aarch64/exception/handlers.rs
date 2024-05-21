@@ -35,8 +35,7 @@ extern "C" fn handle_el1t_err(state: &ExceptionState) -> *mut usize {
 // This means that `SPSel` holds the value 1 and this is the mode that we are currently using
 #[no_mangle]
 extern "C" fn handle_el1h_sync(state: &mut ExceptionState) -> *mut usize {
-    println!();
-    println!("*** HANDLE_EL1H_SYNC ExceptionState ***");
+    println!("\n*** HANDLE_EL1H_SYNC ExceptionState ***");
     println!("FAR_EL1: {:#018x}", FAR_EL1.get());
     println!("{}", state);
 
@@ -52,9 +51,7 @@ extern "C" fn handle_el1h_sync(state: &mut ExceptionState) -> *mut usize {
     panic!("handle_el1h_sync Called!");
 }
 
-fn handle_interrupt(state: &ExceptionState) {
-    println!("{}", state);
-
+fn handle_interrupt(state: &ExceptionState) -> *mut usize {
     if let Some(irqid) = GicV3::get_and_acknowledge_interrupt() {
         let id: u32 = irqid.into();
         let name = unsafe { IRQ_NAMES[id as usize].unwrap_or("Unnamed IRQ") };
@@ -62,23 +59,21 @@ fn handle_interrupt(state: &ExceptionState) {
 
         println!("Received IRQ name: {} ({:?})", name, irqid);
         handler(&state);
+        println!();
     }
+    core::ptr::null_mut()
 }
 
 #[no_mangle]
 extern "C" fn handle_el1h_irq(state: &ExceptionState) -> *mut usize {
-    println!();
-    println!("*** HANDLE_EL1H_IRQ ExceptionState ***");
-    handle_interrupt(state);
-    core::ptr::null_mut()
+    println!("\n*** HANDLE_EL1H_IRQ ExceptionState ***");
+    handle_interrupt(state)
 }
 
 #[no_mangle]
 extern "C" fn handle_el1h_fiq(state: &ExceptionState) -> *mut usize {
-    println!();
-    println!("*** HANDLE_EL1H_FIQ ExceptionState ***");
-    handle_interrupt(state);
-    core::ptr::null_mut()
+    println!("\n*** HANDLE_EL1H_FIQ ExceptionState ***");
+    handle_interrupt(state)
 }
 
 #[no_mangle]

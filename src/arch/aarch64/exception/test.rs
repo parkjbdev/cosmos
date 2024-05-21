@@ -1,5 +1,4 @@
-use crate::arch::{exception::sgi, state::ExceptionState};
-use arm_gic::gicv3::IntId;
+use crate::arch::{exception::irq, state::ExceptionState};
 use log::info;
 
 pub fn test_segfault() {
@@ -19,13 +18,14 @@ pub fn test_sgi() {
     info!("Testing Software Generated Interrupt(SGI)");
 
     fn test_sgi_handler(state: &ExceptionState) -> bool {
-        println!("test_sgi handler called");
+        println!("SGI Test Success");
         true
     }
 
     // Configure an SGI(Software Generated Interrupt) and then send it to ourself.
-    let sgi = sgi::SGI::new(3, 0x00, test_sgi_handler, "test");
-
-    sgi::register_sgi(sgi);
-    sgi::send_sgi(3);
+    let sgi = irq::Interrupt::new(3, 0x01, 0x00, Some(test_sgi_handler), Some("test"))
+        .register()
+        .enable()
+        .send(None);
+    // irq::send_sgi(3);
 }

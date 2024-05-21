@@ -1,9 +1,7 @@
-use core::{arch::asm, time::Duration};
-
+use crate::arch::{dtb::get_dtb, exception::irq::Interrupt, state::ExceptionState};
 use aarch64_cpu::{asm::barrier, registers::*};
+use core::{arch::asm, time::Duration};
 use log::info;
-
-use crate::arch::{dtb::get_dtb, exception::Interrupt, state::ExceptionState};
 
 pub fn init_timer() {
     let dtb = get_dtb();
@@ -17,37 +15,37 @@ pub fn init_timer() {
     const SPLIT_SIZE: usize = core::mem::size_of::<u32>();
 
     let chunks: &[[u8; SPLIT_SIZE]] = unsafe { timer_interrupts.as_chunks_unchecked() };
-    let _timer_secure: Interrupt = Interrupt::raw_new(
+    let _timer_secure: Interrupt = Interrupt::from_raw(
         u32::from_be_bytes(chunks[0]),
         u32::from_be_bytes(chunks[1]),
         u32::from_be_bytes(chunks[2]),
         0x00,
-        "Secure Timer",
-        |state| true,
+        Some(|state| true),
+        Some("Secure Timer"),
     );
-    let _timer_nonsecure: Interrupt = Interrupt::raw_new(
+    let _timer_nonsecure: Interrupt = Interrupt::from_raw(
         u32::from_be_bytes(chunks[3]),
         u32::from_be_bytes(chunks[4]),
         u32::from_be_bytes(chunks[5]),
         0x00,
-        "NonSecure Timer",
-        |state| true,
+        Some(timer_handler),
+        Some("NonSecure Timer"),
     );
-    let _timer_virtual: Interrupt = Interrupt::raw_new(
+    let _timer_virtual: Interrupt = Interrupt::from_raw(
         u32::from_be_bytes(chunks[6]),
         u32::from_be_bytes(chunks[7]),
         u32::from_be_bytes(chunks[8]),
         0x00,
-        "Virtual Timer",
-        |state| true,
+        Some(|state| true),
+        Some("Virtual Timer"),
     );
-    let _timer_hypervisor: Interrupt = Interrupt::raw_new(
+    let _timer_hypervisor: Interrupt = Interrupt::from_raw(
         u32::from_be_bytes(chunks[9]),
         u32::from_be_bytes(chunks[10]),
         u32::from_be_bytes(chunks[11]),
         0x00,
-        "Hypervisor Timer",
-        |state| true,
+        Some(|state| true),
+        Some("Hypervisor Timer"),
     );
 
     _timer_nonsecure.register();
@@ -57,7 +55,6 @@ pub fn init_timer() {
 fn timer_handler(_state: &ExceptionState) -> bool {
     info!("Handle Timer Interrupt");
 
-    // TODO: Handle timer
     unsafe {
         asm!(
             "msr cntp_cval_el0, xzr",

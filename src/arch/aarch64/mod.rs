@@ -7,12 +7,15 @@ pub mod start;
 pub mod state;
 pub mod console;
 pub mod pl011;
+use arm_gic::irq_disable;
 pub use constants::*;
 
 use log::info;
 
 // Responsible for initializing architecture specific settings
 pub fn init() {
+    irq_disable();
+
     let dtb = &dtb::get_dtb();
 
     console::init(dtb);
