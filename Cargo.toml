@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-aarch64-cpu = "9.4.0"
+aarch64-cpu = { version = "9.x.x" }
 acpi = "5.0.0"
 arm-gic = "0.1.0"
 generic_once_cell = "0.1.1"
@@ -15,7 +15,7 @@ hermit-dtb = "0.1.1"
 lock_api = "0.4.11"
 log = "0.4.20"
 plain = "0.2.3"
-tock-registers = "0.9.0"
+tock-registers = { version = "0.8.x", default-features = false, features = ["register_types"] }
 
 [dependencies.fdt-rs]
 version = "0.4"

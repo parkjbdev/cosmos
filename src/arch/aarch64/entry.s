@@ -47,9 +47,9 @@ _start:
 	mov		sp, x0
 
   // Setting Jiffies 
-  mrs x2, CNTFRQ_EL0
-  cmp x2, xzr
-  b.eq .L_parking_loop
+  // mrs x2, CNTFRQ_EL0
+  // cmp x2, xzr
+  // b.eq .L_parking_loop
 
   // adrp x1, ARCH_TIMER_COUNTER_FREQ 
   // add x1, x1, #:lo12:ARCH_TIMER_COUNTER_FREQ

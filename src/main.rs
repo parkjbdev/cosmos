@@ -17,20 +17,33 @@ pub mod log;
 pub mod sync;
 
 extern crate log as log_crate;
-use core::alloc::Layout;
-use log_crate::{error, info};
-
 use crate::{
-    arch::exception::timer::{resolution, sleep},
+    arch::exception::current_el,
     console::{Console, CONSOLE},
 };
+use aarch64_cpu::registers::*;
+use arm_gic::{irq_disable, irq_enable};
+use core::{alloc::Layout, arch::asm};
+use log_crate::{error, info};
 
 #[no_mangle]
 pub(crate) unsafe extern "C" fn kernel_main() -> ! {
-    log::init();
-    arch::init();
+    // Initialize Exceptions
+    irq_disable();
+    arch::exception::init();
 
-    info!("Timer Resolution: {}ns", resolution().as_nanos());
+    // Initialize Console
+    log::init();
+    arch::console::init();
+
+    // Initialize Timer
+    info!(
+        "Timer Resolution: {}ns",
+        arch::timer::resolution().as_nanos()
+    );
+    arch::timer::init();
+
+    irq_enable();
 
     println!("       _________  _________ ___  ____  _____");
     println!("      / ___/ __ \\/ ___/ __ `__ \\/ __ \\/ ___/");
@@ -38,6 +51,20 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     println!("     \\___/\\____/____/_/ /_/ /_/\\____/____/  ");
     println!();
 
+    // info!("Testing Exceptions");
+    // arch::exception::test::test_segfault();
+    // arch::exception::test::test_sgi();
+    // info!("Test Pass");
+
+    info!("Current Exception Level: EL{}", unsafe { current_el() });
+
+    // CPU & RAM Info
+    info!("CPU Count: {} CPUs", arch::get_cpus());
+    let (ram_start, ram_size) = arch::get_ramrange();
+    info!("RAM: start {:#x} size {:#x}", ram_start, ram_size);
+
+    // Memory Layout
+    println!();
     println!(
         "{: <30}: [{:p} ~ {:p}]",
         "Kernel",
@@ -64,23 +91,17 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     );
 
     println!("Waiting for input");
+    loop {
+        unsafe { asm!("wfe", options(nomem, nostack)) }
+    }
 
     let console = CONSOLE.get_mut().unwrap();
     console.clear_rx();
 
     loop {
         let c = console.read_char();
-        // console.write_char(c);
-        info!("Read: {}", c);
-
-        if c == '\n' {
-            break;
-        }
-    }
-
-    loop {
-        info!("Spinning 1sec");
-        sleep(1);
+        console.write_char(c);
+        unsafe { asm!("wfe", options(nomem, nostack)) }
     }
 }
 

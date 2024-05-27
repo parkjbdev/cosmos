@@ -1,11 +1,8 @@
-#![allow(dead_code)]
-
-use crate::arch::{
-    exception::{IRQ_HANDLERS, IRQ_NAMES},
-    state::ExceptionState,
-};
+use super::state::ExceptionState;
+use crate::arch::exception::{IRQ_HANDLERS, IRQ_NAMES};
 use aarch64_cpu::registers::*;
 use arm_gic::gicv3::GicV3;
+use log::info;
 
 /* Current EL with SP0 */
 // Exception is taken from EL1 while stack pointer was shared with EL0.
@@ -57,22 +54,20 @@ fn handle_interrupt(state: &ExceptionState) -> *mut usize {
         let name = unsafe { IRQ_NAMES[id as usize].unwrap_or("Unnamed IRQ") };
         let handler = unsafe { IRQ_HANDLERS[id as usize].unwrap() };
 
-        println!("Received IRQ name: {} ({:?})", name, irqid);
+        info!("Received IRQ name: {} ({:?})", name, irqid);
         handler(&state);
-        println!();
+        GicV3::end_interrupt(irqid);
     }
     core::ptr::null_mut()
 }
 
 #[no_mangle]
 extern "C" fn handle_el1h_irq(state: &ExceptionState) -> *mut usize {
-    println!("\n*** HANDLE_EL1H_IRQ ExceptionState ***");
     handle_interrupt(state)
 }
 
 #[no_mangle]
 extern "C" fn handle_el1h_fiq(state: &ExceptionState) -> *mut usize {
-    println!("\n*** HANDLE_EL1H_FIQ ExceptionState ***");
     handle_interrupt(state)
 }
 

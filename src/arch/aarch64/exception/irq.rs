@@ -1,8 +1,8 @@
 use super::{Handler, IRQ_HANDLERS, IRQ_NAMES};
 use crate::arch::exception::GIC;
 use arm_gic::gicv3::{GicV3, IntId, SgiTarget, Trigger};
+use log::info;
 use core::{arch::asm, fmt::Display};
-use log::error;
 
 const SGI_START: u32 = 0;
 const SGI_END: u32 = 15;
@@ -91,6 +91,8 @@ impl Interrupt {
             asm!("dsb nsh", "isb", options(nostack, nomem, preserves_flags));
         }
 
+        info!("New IRQ: {} ({})", name.unwrap(), id);
+
         ret
     }
 
@@ -129,6 +131,7 @@ impl Interrupt {
         let intid = self.get_id();
         gic.set_interrupt_priority(intid, self.prio);
         gic.set_trigger(intid, self.trigger);
+        gic.enable_interrupt(intid, true);
 
         unsafe {
             asm!("dsb nsh", "isb", options(nostack, nomem, preserves_flags));
@@ -146,24 +149,6 @@ impl Interrupt {
     pub fn disable(&self) -> &Self {
         let gic = unsafe { GIC.get_mut().unwrap() };
         gic.enable_interrupt(self.get_id(), false);
-        self
-    }
-
-    pub fn send(&self, target: Option<SgiTarget>) -> &Self {
-        if self.get_type() != &InterruptType::SGI {
-            error!("Send is only supported for SGI interrupts!");
-        }
-
-        let target: SgiTarget = match target {
-            Some(target) => target,
-            _ => SgiTarget::List {
-                affinity3: 0,
-                affinity2: 0,
-                affinity1: 0,
-                target_list: 0b1,
-            },
-        };
-        GicV3::send_sgi(IntId::sgi(self.id), target);
         self
     }
 

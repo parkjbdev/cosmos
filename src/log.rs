@@ -14,7 +14,7 @@ impl log::Log for Logger {
         if self.enabled(record.metadata()) {
             let level = record.level();
             let args = record.args();
-            let time = crate::arch::exception::timer::uptime();
+            let time = crate::arch::timer::uptime();
 
             println!("[ {:>3}.{:06}][{level}] {args}", time.as_secs(), time.subsec_micros());
             // println!("[ {:>3}][{level}] {args}", time.as_secs());

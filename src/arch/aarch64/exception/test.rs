@@ -1,4 +1,4 @@
-use crate::arch::{exception::irq, state::ExceptionState};
+use crate::arch::exception::{irq, state::ExceptionState};
 use log::info;
 
 pub fn test_segfault() {
@@ -23,9 +23,9 @@ pub fn test_sgi() {
     }
 
     // Configure an SGI(Software Generated Interrupt) and then send it to ourself.
-    let sgi = irq::Interrupt::new(3, 0x01, 0x00, Some(test_sgi_handler), Some("test"))
+    let sgi_id = 3;
+    irq::Interrupt::new(sgi_id, 0x01, 0x00, Some(test_sgi_handler), Some("test"))
         .register()
-        .enable()
-        .send(None);
-    // irq::send_sgi(3);
+        .enable();
+    irq::send_sgi(sgi_id);
 }

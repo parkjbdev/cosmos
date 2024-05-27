@@ -1,9 +1,11 @@
-use crate::arch::{dtb::get_dtb, exception::irq::Interrupt, state::ExceptionState};
+use super::exception::state::ExceptionState;
+use crate::arch::{dtb::get_dtb, exception::irq::Interrupt};
 use aarch64_cpu::{asm::barrier, registers::*};
-use core::{arch::asm, time::Duration};
+use core::time::Duration;
 use log::info;
+use tock_registers::interfaces::ReadWriteable;
 
-pub fn init_timer() {
+pub fn init() {
     let dtb = get_dtb();
     let timer_compatible =
         core::str::from_utf8(dtb.get_property("/timer", "compatible").unwrap()).unwrap();
@@ -15,14 +17,14 @@ pub fn init_timer() {
     const SPLIT_SIZE: usize = core::mem::size_of::<u32>();
 
     let chunks: &[[u8; SPLIT_SIZE]] = unsafe { timer_interrupts.as_chunks_unchecked() };
-    let _timer_secure: Interrupt = Interrupt::from_raw(
-        u32::from_be_bytes(chunks[0]),
-        u32::from_be_bytes(chunks[1]),
-        u32::from_be_bytes(chunks[2]),
-        0x00,
-        Some(|state| true),
-        Some("Secure Timer"),
-    );
+    // let _timer_secure: Interrupt = Interrupt::from_raw(
+    //     u32::from_be_bytes(chunks[0]),
+    //     u32::from_be_bytes(chunks[1]),
+    //     u32::from_be_bytes(chunks[2]),
+    //     0x00,
+    //     Some(timer_handler),
+    //     Some("Secure Timer"),
+    // );
     let _timer_nonsecure: Interrupt = Interrupt::from_raw(
         u32::from_be_bytes(chunks[3]),
         u32::from_be_bytes(chunks[4]),
@@ -31,38 +33,67 @@ pub fn init_timer() {
         Some(timer_handler),
         Some("NonSecure Timer"),
     );
-    let _timer_virtual: Interrupt = Interrupt::from_raw(
-        u32::from_be_bytes(chunks[6]),
-        u32::from_be_bytes(chunks[7]),
-        u32::from_be_bytes(chunks[8]),
-        0x00,
-        Some(|state| true),
-        Some("Virtual Timer"),
-    );
-    let _timer_hypervisor: Interrupt = Interrupt::from_raw(
-        u32::from_be_bytes(chunks[9]),
-        u32::from_be_bytes(chunks[10]),
-        u32::from_be_bytes(chunks[11]),
-        0x00,
-        Some(|state| true),
-        Some("Hypervisor Timer"),
-    );
+    // let _timer_virtual: Interrupt = Interrupt::from_raw(
+    //     u32::from_be_bytes(chunks[6]),
+    //     u32::from_be_bytes(chunks[7]),
+    //     u32::from_be_bytes(chunks[8]),
+    //     0x00,
+    //     Some(timer_handler),
+    //     Some("Virtual Timer"),
+    // );
+    // let _timer_hypervisor: Interrupt = Interrupt::from_raw(
+    //     u32::from_be_bytes(chunks[9]),
+    //     u32::from_be_bytes(chunks[10]),
+    //     u32::from_be_bytes(chunks[11]),
+    //     0x00,
+    //     Some(timer_handler),
+    //     Some("Hypervisor Timer"),
+    // );
 
+    info!("Registering Timer.. ");
     _timer_nonsecure.register();
-    _timer_nonsecure.enable();
+
+    set_timeout_irq_after(CNTFRQ_EL0.get());
+    enable_timer_irq(true);
+}
+
+fn enable_timer_irq(enable: bool) {
+    CNTP_CTL_EL0
+        .write(CNTP_CTL_EL0::ENABLE.val(enable as u64) + CNTP_CTL_EL0::IMASK.val(!enable as u64));
 }
 
 fn timer_handler(_state: &ExceptionState) -> bool {
-    info!("Handle Timer Interrupt");
+    CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::CLEAR); // Concludes Timer IRQ
+    set_timeout_irq_after(CNTFRQ_EL0.get());
 
-    unsafe {
-        asm!(
-            "msr cntp_cval_el0, xzr",
-            "msr cntp_ctl_el0, xzr",
-            options(nostack, nomem)
-        );
-    }
     true
+}
+
+// Interrupt Based Timeout
+fn set_timeout_irq(target: u64) {
+    CNTP_CVAL_EL0.set(target);
+    CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::SET + CNTP_CTL_EL0::IMASK::CLEAR);
+}
+
+fn set_timeout_irq_after(target: u64) {
+    CNTP_TVAL_EL0.set(target);
+    CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::SET + CNTP_CTL_EL0::IMASK::CLEAR);
+}
+
+#[allow(dead_code)]
+pub fn conclude_timeout_irq() {
+    CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::CLEAR);
+}
+
+pub fn print_timer_reg() {
+    info!("CNTP_CTL_EL0: {:#06x}", CNTP_CTL_EL0.get());
+    info!("  ISTATUS: {:?}", CNTP_CTL_EL0.read(CNTP_CTL_EL0::ISTATUS));
+    info!("  IMASK: {:?}", CNTP_CTL_EL0.read(CNTP_CTL_EL0::IMASK));
+    info!("  ENABLE: {:?}", CNTP_CTL_EL0.read(CNTP_CTL_EL0::ENABLE));
+
+    info!("CNTPCT_EL0: {:?}", CNTPCT_EL0.get());
+    info!("CNTP_TVAL_EL0: {:?}", CNTP_TVAL_EL0.get());
+    info!("CNTP_CVAL_EL0: {:?}", CNTP_CVAL_EL0.get());
 }
 
 struct JiffyValue(u64);
