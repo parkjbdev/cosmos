@@ -15,7 +15,6 @@ _start:
   cmp x1, #0x8
   b.ne .L_parking_loop
 
-
   ADR_REL x0, __bss_start
   ADR_REL x1, __bss_end_exclusive
   cmp x0, x1

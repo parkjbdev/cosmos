@@ -1,5 +1,5 @@
 [build]
-target = "aarch64-unknown-none"
+target = "aarch64-unknown-none-softfloat"
 
 [target.'cfg(target_arch="aarch64")']
 rustflags = ["-Clink-arg=-Tsrc/arch/aarch64/link.ld"]

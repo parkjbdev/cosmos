@@ -1,7 +1,11 @@
 use super::exception::state::ExceptionState;
-use crate::arch::{dtb::get_dtb, exception::irq::Interrupt};
+use crate::{
+    arch::{dtb::get_dtb, exception::irq::Interrupt},
+    sync::spin::RawSpinlock,
+};
 use aarch64_cpu::{asm::barrier, registers::*};
-use core::time::Duration;
+use core::{ops::Index, time::Duration};
+use generic_once_cell::OnceCell;
 use log::info;
 use tock_registers::interfaces::ReadWriteable;
 
@@ -16,16 +20,9 @@ pub fn init() {
     let timer_interrupts = dtb.get_property("/timer", "interrupts").unwrap();
     const SPLIT_SIZE: usize = core::mem::size_of::<u32>();
 
+    // Order: Secure Timer[0:2], NonSecure Timer[3:5], Virtual Timer[6:8], Hypervisor Timer[9:11]
     let chunks: &[[u8; SPLIT_SIZE]] = unsafe { timer_interrupts.as_chunks_unchecked() };
-    // let _timer_secure: Interrupt = Interrupt::from_raw(
-    //     u32::from_be_bytes(chunks[0]),
-    //     u32::from_be_bytes(chunks[1]),
-    //     u32::from_be_bytes(chunks[2]),
-    //     0x00,
-    //     Some(timer_handler),
-    //     Some("Secure Timer"),
-    // );
-    let _timer_nonsecure: Interrupt = Interrupt::from_raw(
+    let timer_irq: Interrupt = Interrupt::from_raw(
         u32::from_be_bytes(chunks[3]),
         u32::from_be_bytes(chunks[4]),
         u32::from_be_bytes(chunks[5]),
@@ -33,25 +30,9 @@ pub fn init() {
         Some(timer_handler),
         Some("NonSecure Timer"),
     );
-    // let _timer_virtual: Interrupt = Interrupt::from_raw(
-    //     u32::from_be_bytes(chunks[6]),
-    //     u32::from_be_bytes(chunks[7]),
-    //     u32::from_be_bytes(chunks[8]),
-    //     0x00,
-    //     Some(timer_handler),
-    //     Some("Virtual Timer"),
-    // );
-    // let _timer_hypervisor: Interrupt = Interrupt::from_raw(
-    //     u32::from_be_bytes(chunks[9]),
-    //     u32::from_be_bytes(chunks[10]),
-    //     u32::from_be_bytes(chunks[11]),
-    //     0x00,
-    //     Some(timer_handler),
-    //     Some("Hypervisor Timer"),
-    // );
 
     info!("Registering Timer.. ");
-    _timer_nonsecure.register();
+    timer_irq.register();
 
     set_timeout_irq_after(CNTFRQ_EL0.get());
     enable_timer_irq(true);

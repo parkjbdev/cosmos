@@ -1,5 +1,4 @@
 pub mod handlers;
-// pub mod sgi;
 pub mod irq;
 pub mod state;
 pub mod test;
@@ -9,13 +8,12 @@ use crate::sync::spin::RawSpinlock;
 use aarch64_cpu::asm::barrier;
 use aarch64_cpu::registers::*;
 use arm_gic::{gicv3::GicV3, irq_disable, irq_enable};
+use log::info;
 use core::arch::{asm, global_asm};
 use core::cell::UnsafeCell;
 use generic_once_cell::OnceCell;
 use hermit_dtb::Dtb;
 use state::ExceptionState;
-
-use self::irq::Interrupt;
 
 extern "C" {
     pub fn current_el() -> u8;
@@ -33,7 +31,7 @@ static mut IRQ_HANDLERS: [Option<Handler>; MAX_HANDLERS] = [None; MAX_HANDLERS];
 pub(crate) static mut GIC: OnceCell<RawSpinlock, GicV3> = OnceCell::new();
 
 pub fn init() {
-    let dtb = &dtb::get_dtb();
+    // TODO: Assert that interrupts are disabled
 
     // Set Exception Vector Table
     extern "Rust" {
@@ -42,6 +40,7 @@ pub fn init() {
 
     VBAR_EL1.set(unsafe { __exception_vector.get() as u64 });
 
+    let dtb = &dtb::get_dtb();
     // Set GIC
     let gic = init_gic(dtb);
     unsafe { GIC.set(gic).unwrap() };
@@ -82,26 +81,6 @@ fn init_gic(dtb: &Dtb) -> GicV3 {
     gic
 }
 
-pub fn mask_irq() {
-    unsafe {
-        asm!(
-            "msr DAIFSet, {0}",
-            const 0b0010,
-            options(nostack, nomem, preserves_flags)
-        );
-    }
-}
-
-pub fn unmask_irq() {
-    unsafe {
-        asm!(
-            "msr DAIFClr, {0}",
-            const 0b0010,
-            options(nostack, nomem, preserves_flags)
-        );
-    }
-}
-
 pub fn set_irq(daif: u64) {
     unsafe {
         asm!(
@@ -120,4 +99,13 @@ where
     let ret = f();
     set_irq(daif);
     ret
+}
+
+pub fn print_all_handlers() {
+    info!("IRQ Handlers");
+    for (i, name) in unsafe { IRQ_NAMES.iter().enumerate() } {
+        if let Some(handler) = name {
+            info!("    {: >3}. {}", i, handler);
+        }
+    }
 }

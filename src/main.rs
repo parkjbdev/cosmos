@@ -12,16 +12,13 @@
 #[macro_use]
 pub mod print;
 pub mod arch;
-pub mod console;
+pub mod interface;
 pub mod log;
 pub mod sync;
 
 extern crate log as log_crate;
-use crate::{
-    arch::exception::current_el,
-    console::{Console, CONSOLE},
-};
-use aarch64_cpu::registers::*;
+use crate::arch::{console::CONSOLE, exception::current_el};
+use crate::interface::console::Console;
 use arm_gic::{irq_disable, irq_enable};
 use core::{alloc::Layout, arch::asm};
 use log_crate::{error, info};
@@ -64,36 +61,37 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     info!("RAM: start {:#x} size {:#x}", ram_start, ram_size);
 
     // Memory Layout
-    println!();
-    println!(
-        "{: <30}: [{:p} ~ {:p}]",
+    info!("Memory Layout");
+    info!(
+        "    {: <30}: [{:p} ~ {:p}]",
         "Kernel",
         &arch::kernel_start,
         &arch::kernel_end
     );
-    println!(
-        "{: <30}: [{:p} ~ {:p}]",
+    info!(
+        "    {: <30}: [{:p} ~ {:p}]",
         ".text",
         &arch::__text_start,
         &arch::__text_end
     );
-    println!(
-        "{: <30}: [{:p} - {:p}]",
+    info!(
+        "    {: <30}: [{:p} - {:p}]",
         ".bss",
         &arch::__bss_start,
         &arch::__bss_end_exclusive
     );
-    println!(
-        "{: <30}: [{:p} ~ {:p}]",
+    info!(
+        "    {: <30}: [{:p} ~ {:p}]",
         "boot_core_stack_start",
         &arch::__boot_core_stack_start,
         &arch::__boot_core_stack_end_exclusive
     );
 
-    println!("Waiting for input");
-    loop {
-        unsafe { asm!("wfe", options(nomem, nostack)) }
-    }
+    arch::exception::print_all_handlers();
+
+    info!("Initialization Done!");
+    info!("Echoing Inputs");
+    info!("Waiting for events");
 
     let console = CONSOLE.get_mut().unwrap();
     console.clear_rx();
