@@ -1,7 +1,7 @@
 #[cfg(target_os = "none")]
 #[doc(hidden)]
 pub fn _print(args: core::fmt::Arguments<'_>) {
-    use crate::console::{Console, CONSOLE};
+    use crate::{arch::console::CONSOLE, interface::Console};
 
     let console = unsafe { CONSOLE.get_mut().unwrap() };
     console.write_fmt(args).unwrap();

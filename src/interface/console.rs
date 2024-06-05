@@ -1,4 +1,4 @@
-pub use super::arch::console::CONSOLE;
+pub use crate::arch::console::CONSOLE;
 use core::fmt::{Arguments, Result};
 
 pub trait Console {

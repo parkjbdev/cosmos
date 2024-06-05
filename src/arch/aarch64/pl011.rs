@@ -1,4 +1,4 @@
-use crate::console;
+use crate::interface::console;
 use tock_registers::{
     interfaces::{Readable, Writeable},
     register_bitfields, register_structs,
@@ -232,18 +232,18 @@ impl PL011Uart {
     }
 
     pub fn init(&mut self) {
-        // self.flush();
+        self.flush();
 
-        // self.registers.CR.set(0);
-        // self.registers.ICR.write(ICR::ALL::CLEAR);
-        // self.registers.IBRD.write(IBRD::BAUD_DIVINT.val(3));
-        // self.registers.FBRD.write(FBRD::BAUD_DIVFRAC.val(16));
+        self.registers.CR.set(0);
+        self.registers.ICR.write(ICR::ALL::CLEAR);
+        self.registers.IBRD.write(IBRD::BAUD_DIVINT.val(3));
+        self.registers.FBRD.write(FBRD::BAUD_DIVFRAC.val(16));
         self.registers
             .LCR_H
             .write(LCR_H::WLEN::EightBit + LCR_H::FEN::FifosEnabled);
 
-        // // Set RX FIFO fill level at 1/8.
-        // self.registers.IFLS.write(IFLS::RXIFLSEL::OneEigth);
+        // Set RX FIFO fill level at 1/8.
+        self.registers.IFLS.write(IFLS::RXIFLSEL::OneEigth);
 
         // Enable RX IRQ + RX timeout IRQ.
         self.registers
