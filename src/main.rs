@@ -12,13 +12,13 @@
 #[macro_use]
 pub mod print;
 pub mod arch;
-pub mod interface;
 pub mod log;
 pub mod sync;
+pub mod console;
 
 extern crate log as log_crate;
 use crate::arch::{console::CONSOLE, exception::current_el};
-use crate::interface::console::Console;
+use crate::console::interface::{Read, Write};
 use arm_gic::{irq_disable, irq_enable};
 use core::{alloc::Layout, arch::asm};
 use log_crate::{error, info};

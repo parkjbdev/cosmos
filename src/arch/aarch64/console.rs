@@ -1,13 +1,11 @@
-use hermit_dtb::Dtb;
 use log::info;
 
+use crate::arch::constants::SERIAL_PORT_ADDRESS;
+use crate::arch::dtb;
 use crate::arch::exception::irq::Interrupt;
+use crate::arch::pl011::PL011Uart;
 use crate::sync::spin::RawSpinlock;
 use generic_once_cell::OnceCell;
-
-use super::constants::SERIAL_PORT_ADDRESS;
-use super::dtb;
-use super::pl011::PL011Uart;
 
 pub static mut CONSOLE: OnceCell<RawSpinlock, PL011Uart> = OnceCell::new();
 
