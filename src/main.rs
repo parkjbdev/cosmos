@@ -11,10 +11,10 @@
 
 #[macro_use]
 pub mod print;
-pub mod arch;
-pub mod log;
-pub mod sync;
+
 pub mod console;
+pub mod arch;
+pub mod sync;
 
 extern crate log as log_crate;
 use crate::arch::{console::CONSOLE, exception::current_el};
@@ -30,7 +30,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     arch::exception::init();
 
     // Initialize Console
-    log::init();
+    console::log::init();
     arch::console::init();
 
     // Initialize Timer
