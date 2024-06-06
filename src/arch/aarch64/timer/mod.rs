@@ -1,11 +1,7 @@
 use super::exception::state::ExceptionState;
-use crate::{
-    arch::{dtb::get_dtb, exception::irq::Interrupt},
-    sync::spin::RawSpinlock,
-};
+use crate::arch::{dtb::get_dtb, exception::irq::irq::Interrupt};
 use aarch64_cpu::{asm::barrier, registers::*};
-use core::{ops::Index, time::Duration};
-use generic_once_cell::OnceCell;
+use core::time::Duration;
 use log::info;
 use tock_registers::interfaces::ReadWriteable;
 

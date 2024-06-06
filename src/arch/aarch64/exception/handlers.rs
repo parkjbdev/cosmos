@@ -1,3 +1,6 @@
+// Exception Vector Table Handlers
+// Exception vector in `vector_table.s` will call appropriate handler
+
 use super::state::ExceptionState;
 use crate::arch::exception::{IRQ_HANDLERS, IRQ_NAMES};
 use aarch64_cpu::registers::*;
@@ -51,8 +54,8 @@ extern "C" fn handle_el1h_sync(state: &mut ExceptionState) -> *mut usize {
 fn handle_interrupt(state: &ExceptionState) -> *mut usize {
     if let Some(irqid) = GicV3::get_and_acknowledge_interrupt() {
         let id: u32 = irqid.into();
-        let name = unsafe { IRQ_NAMES[id as usize].unwrap_or("Unnamed IRQ") };
-        let handler = unsafe { IRQ_HANDLERS[id as usize].unwrap() };
+        let name = IRQ_NAMES.lock()[id as usize].unwrap_or("Unnamed IRQ");
+        let handler = IRQ_HANDLERS.lock()[id as usize].unwrap();
 
         info!("Received IRQ name: {} ({:?})", name, irqid);
         handler(&state);

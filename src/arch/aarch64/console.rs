@@ -2,9 +2,9 @@ use log::info;
 
 use crate::arch::constants::SERIAL_PORT_ADDRESS;
 use crate::arch::dtb;
-use crate::arch::exception::irq::Interrupt;
+use crate::arch::exception::irq::irq::Interrupt;
 use crate::arch::pl011::PL011Uart;
-use crate::sync::spin::RawSpinlock;
+use crate::sync::spinlock::RawSpinlock;
 use generic_once_cell::OnceCell;
 
 pub static mut CONSOLE: OnceCell<RawSpinlock, PL011Uart> = OnceCell::new();

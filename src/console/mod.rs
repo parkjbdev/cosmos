@@ -9,4 +9,3 @@ pub fn print(args: core::fmt::Arguments<'_>) {
     let console = unsafe { CONSOLE.get_mut().unwrap() };
     console.write_fmt(args).unwrap();
 }
-

@@ -1,7 +1,6 @@
-use super::{Handler, IRQ_HANDLERS, IRQ_NAMES};
-use crate::arch::exception::GIC;
+use super::irq_type::InterruptType;
+use crate::arch::exception::{Handler, GIC, IRQ_HANDLERS, IRQ_NAMES};
 use arm_gic::gicv3::{GicV3, IntId, SgiTarget, Trigger};
-use log::info;
 use core::{arch::asm, fmt::Display};
 
 const SGI_START: u32 = 0;
@@ -12,25 +11,6 @@ const PPI_END: u32 = 31;
 
 const SPI_START: u32 = 32;
 const SPI_END: u32 = 1020;
-
-#[derive(Eq, PartialEq)]
-pub enum InterruptType {
-    PPI,
-    SPI,
-    SGI,
-}
-
-impl InterruptType {}
-
-impl Display for InterruptType {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            InterruptType::PPI => write!(f, "PPI"),
-            InterruptType::SPI => write!(f, "SPI"),
-            InterruptType::SGI => write!(f, "SGI"),
-        }
-    }
-}
 
 pub struct Interrupt {
     id: u32,
@@ -66,42 +46,35 @@ impl Interrupt {
         let trigger = match trigger {
             4 | 8 => Trigger::Level,
             2 | 1 => Trigger::Edge,
-            _ => Trigger::Edge, // SGI is always edge triggered
-                                // _ => panic!("Invalid interrupt trigger type!"),
+            // SGI is always edge triggered
+            _ => Trigger::Edge,
+            // _ => panic!("Invalid interrupt trigger type!"),
         };
 
         assert!(id >= SGI_START && id <= SPI_END);
 
-        let ret = Self {
-            id,
-            trigger,
-            prio,
-        };
+        let ret = Self { id, trigger, prio };
 
-        if unsafe { IRQ_NAMES[id as usize] } != None {
+        if IRQ_NAMES.lock()[id as usize] != None {
             panic!("IRQ #{} already registered", id);
         }
 
+        IRQ_NAMES.lock()[id as usize] = match name {
+            Some(name) => Some(name),
+            None => Some("Unnamed IRQ"),
+        };
+        IRQ_HANDLERS.lock()[id as usize] = handler;
         unsafe {
-            IRQ_NAMES[id as usize] = match name {
-                Some(name) => Some(name),
-                None => Some("Unnamed IRQ"),
-            };
-            IRQ_HANDLERS[id as usize] = handler;
             asm!("dsb nsh", "isb", options(nostack, nomem, preserves_flags));
         }
-
-        info!("New IRQ: {} ({})", name.unwrap(), id);
 
         ret
     }
 
     pub fn get_name(&self) -> &'static str {
-        unsafe {
-            match IRQ_NAMES[self.id as usize] {
-                Some(name) => name,
-                None => panic!("No name found for IRQ #{}", self.id),
-            }
+        match IRQ_NAMES.lock()[self.id as usize] {
+            Some(name) => name,
+            None => panic!("No name found for IRQ #{}", self.id),
         }
     }
 
@@ -115,7 +88,7 @@ impl Interrupt {
     }
 
     pub fn get_handler(&self) -> Handler {
-        unsafe { IRQ_HANDLERS[self.id as usize].unwrap() }
+        IRQ_HANDLERS.lock()[self.id as usize].unwrap()
     }
 
     fn get_id(&self) -> IntId {
@@ -140,23 +113,15 @@ impl Interrupt {
         self
     }
 
-    pub fn enable(&self) -> &Self{
+    pub fn enable_irq(&self, enable: bool) -> &Self {
         let gic = unsafe { GIC.get_mut().unwrap() };
-        gic.enable_interrupt(self.get_id(), true);
-        self
-    }
-
-    pub fn disable(&self) -> &Self {
-        let gic = unsafe { GIC.get_mut().unwrap() };
-        gic.enable_interrupt(self.get_id(), false);
+        gic.enable_interrupt(self.get_id(), enable);
         self
     }
 
     pub fn remove(&self) {
-        unsafe {
-            IRQ_NAMES[self.id as usize] = None;
-            IRQ_HANDLERS[self.id as usize] = None;
-        }
+        IRQ_NAMES.lock()[self.id as usize] = None;
+        IRQ_HANDLERS.lock()[self.id as usize] = None;
     }
 }
 

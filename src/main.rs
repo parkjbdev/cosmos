@@ -12,12 +12,13 @@
 #[macro_use]
 pub mod print;
 
-pub mod console;
 pub mod arch;
+pub mod console;
 pub mod sync;
 
 extern crate log as log_crate;
-use crate::arch::{console::CONSOLE, exception::current_el};
+use crate::arch::console::CONSOLE;
+use crate::arch::exception::el::get_current_el;
 use crate::console::interface::{Read, Write};
 use arm_gic::{irq_disable, irq_enable};
 use core::{alloc::Layout, arch::asm};
@@ -53,7 +54,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // arch::exception::test::test_sgi();
     // info!("Test Pass");
 
-    info!("Current Exception Level: EL{}", unsafe { current_el() });
+    info!("Current Exception Level: EL{}", get_current_el());
 
     // CPU & RAM Info
     info!("CPU Count: {} CPUs", arch::get_cpus());

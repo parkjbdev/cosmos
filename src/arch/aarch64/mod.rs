@@ -5,7 +5,9 @@ pub mod exception;
 pub mod mm;
 pub mod pl011;
 pub mod start;
+pub mod test;
 pub mod timer;
+
 pub use constants::*;
 
 pub fn get_cpus() -> usize {

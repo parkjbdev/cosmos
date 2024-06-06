@@ -5,7 +5,6 @@ use aarch64_cpu::{asm::eret, registers::*};
 use core::arch::global_asm;
 
 global_asm!(include_str!("entry.s"));
-global_asm!(include_str!("el.s"));
 
 #[no_mangle]
 pub unsafe fn _start_cosmos(boot_core_stack_end_exclusive_addr: u64) {
