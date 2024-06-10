@@ -3,6 +3,7 @@ pub mod handlers;
 pub mod irq;
 pub mod state;
 
+use self::irq::Interrupt;
 use crate::arch::dtb;
 use crate::sync::spinlock::{RawSpinlock, Spinlock};
 use aarch64_cpu::asm::barrier;
@@ -19,6 +20,9 @@ global_asm!(include_str!("vector_table.s"));
 const MAX_HANDLERS: usize = 1024;
 
 type Handler = fn(state: &ExceptionState) -> bool;
+
+static INTERRUPTS: Spinlock<[Option<Interrupt>; MAX_HANDLERS]> =
+    Spinlock::new([None; MAX_HANDLERS]);
 
 static IRQ_NAMES: Spinlock<[Option<&'static str>; MAX_HANDLERS]> =
     Spinlock::new([None; MAX_HANDLERS]);

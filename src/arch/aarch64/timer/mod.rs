@@ -1,5 +1,5 @@
 use super::exception::state::ExceptionState;
-use crate::arch::{dtb::get_dtb, exception::irq::irq::Interrupt};
+use crate::arch::{dtb::get_dtb, exception::irq::Interrupt};
 use aarch64_cpu::{asm::barrier, registers::*};
 use core::time::Duration;
 use log::info;
@@ -138,3 +138,5 @@ pub fn sleep(sec: u64) {
 pub fn msleep(ms: u64) {
     nsleep(ms * 1_000_000)
 }
+
+struct CounterTimer {}

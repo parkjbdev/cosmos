@@ -3,7 +3,6 @@ pub mod constants;
 pub mod dtb;
 pub mod exception;
 pub mod mm;
-pub mod pl011;
 pub mod start;
 pub mod test;
 pub mod timer;

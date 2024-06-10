@@ -1,4 +1,7 @@
-use crate::console;
+use crate::{
+    arch::{dtb, exception::irq::Interrupt},
+    console, interrupt,
+};
 use tock_registers::{
     interfaces::{Readable, Writeable},
     register_bitfields, register_structs,
@@ -157,7 +160,7 @@ impl PL011Uart {
     }
 
     pub fn init(&mut self) {
-        self.flush();
+        self._flush();
 
         self.registers.CR.set(0);
         self.registers.ICR.write(ICR::ALL::CLEAR);
@@ -180,14 +183,14 @@ impl PL011Uart {
             .write(CR::UARTEN::Enabled + CR::TXE::Enabled + CR::RXE::Enabled);
     }
 
-    fn flush(&self) {
+    fn _flush(&self) {
         while self.registers.FR.matches_all(FR::BUSY::SET) {
             unsafe { core::arch::asm!("nop", options(nomem, nostack)) }
         }
     }
 
     fn _write_char(&mut self, c: char) {
-        self.flush();
+        self._flush();
         self.registers.DR.set(c as u32);
         self.chars_written += 1;
     }
@@ -233,7 +236,7 @@ impl console::interface::Write for PL011Uart {
     }
 
     fn flush(&self) {
-        self.flush()
+        self._flush()
     }
 }
 
@@ -244,5 +247,42 @@ impl console::interface::Read for PL011Uart {
 
     fn clear_rx(&mut self) {
         while self._read_char(true).is_some() {}
+    }
+}
+
+impl interrupt::interface::RegisterInterrupt for PL011Uart {
+    fn init_irq(&self) {
+        let dtb = &dtb::get_dtb();
+        let pl011_dt = dtb.get_property("/pl011", "interrupts").unwrap();
+
+        const SPLIT_SIZE: usize = core::mem::size_of::<u32>();
+        let chunks: &[[u8; SPLIT_SIZE]] = unsafe { pl011_dt.as_chunks_unchecked() };
+        let irq_type = u32::from_be_bytes(chunks[0]);
+
+        let id = u32::from_be_bytes(chunks[1]);
+        let trigger = u32::from_be_bytes(chunks[2]);
+
+        let _keyboard: Interrupt = Interrupt::from_raw(
+            irq_type,
+            id,
+            trigger,
+            0x00,
+            Some(|state| {
+                // self.handler();
+                true
+            }),
+            Some("Keyboard Interrupt"),
+        );
+        _keyboard.register();
+    }
+
+    fn handler(&mut self) {
+        let pending = self.registers.MIS.extract();
+        self.registers.ICR.write(ICR::ALL::CLEAR);
+        if pending.matches_any(MIS::RXMIS::SET + MIS::RTMIS::SET) {
+            while let Some(c) = self._read_char(true) {
+                self._write_char(c)
+            }
+        }
     }
 }

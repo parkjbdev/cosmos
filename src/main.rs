@@ -14,6 +14,7 @@ pub mod print;
 
 pub mod arch;
 pub mod console;
+pub mod interrupt;
 pub mod sync;
 
 extern crate log as log_crate;
