@@ -1,12 +1,13 @@
 pub mod irq_type;
 
 use self::irq_type::InterruptType;
-use crate::arch::exception::{Handler, GIC, IRQ_HANDLERS, IRQ_NAMES};
+use super::state::ExceptionState;
+use crate::arch::{dtb, exception::{Handler, GIC, INTERRUPTS}};
 use arm_gic::gicv3::{GicV3, IntId, SgiTarget, Trigger};
 use core::{arch::asm, fmt::Display};
-use hermit_dtb::Dtb;
 
-pub fn init_gic(dtb: &Dtb) -> GicV3 {
+pub fn init_gic() -> GicV3 {
+    let dtb = &dtb::get_dtb();
     // Check Compatible GIC
     let compat = core::str::from_utf8(dtb.get_property("/intc", "compatible").unwrap()).unwrap();
     if !compat.contains("arm,gic-v3") {
@@ -53,6 +54,8 @@ pub struct Interrupt {
     id: u32,
     trigger: Trigger,
     prio: u8,
+    name: &'static str,
+    handler: Handler,
 }
 
 impl Interrupt {
@@ -61,8 +64,8 @@ impl Interrupt {
         id: u32,
         trigger: u32,
         prio: u8,
-        handler: Option<Handler>,
-        name: Option<&'static str>,
+        handler: Handler,
+        name: &'static str,
     ) -> Self {
         let id = u32::from(match irq_type {
             0 => IntId::spi(id),
@@ -73,13 +76,7 @@ impl Interrupt {
         Interrupt::new(id, trigger, prio, handler, name)
     }
 
-    pub fn new(
-        id: u32,
-        trigger: u32,
-        prio: u8,
-        handler: Option<Handler>,
-        name: Option<&'static str>,
-    ) -> Self {
+    pub fn new(id: u32, trigger: u32, prio: u8, handler: Handler, name: &'static str) -> Self {
         let trigger = match trigger {
             4 | 8 => Trigger::Level,
             2 | 1 => Trigger::Edge,
@@ -90,17 +87,20 @@ impl Interrupt {
 
         assert!(id >= SGI_START && id <= SPI_END);
 
-        let ret = Self { id, trigger, prio };
+        let ret = Self {
+            id,
+            trigger,
+            prio,
+            name,
+            handler,
+        };
 
-        if IRQ_NAMES.lock()[id as usize] != None {
+        if INTERRUPTS.lock()[id as usize].is_some() {
             panic!("IRQ #{} already registered", id);
+        } else {
+            INTERRUPTS.lock()[id as usize] = Some(ret);
         }
 
-        IRQ_NAMES.lock()[id as usize] = match name {
-            Some(name) => Some(name),
-            None => Some("Unnamed IRQ"),
-        };
-        IRQ_HANDLERS.lock()[id as usize] = handler;
         unsafe {
             asm!("dsb nsh", "isb", options(nostack, nomem, preserves_flags));
         }
@@ -109,10 +109,7 @@ impl Interrupt {
     }
 
     pub fn get_name(&self) -> &'static str {
-        match IRQ_NAMES.lock()[self.id as usize] {
-            Some(name) => name,
-            None => panic!("No name found for IRQ #{}", self.id),
-        }
+        self.name
     }
 
     pub fn get_type(&self) -> &InterruptType {
@@ -124,16 +121,16 @@ impl Interrupt {
         }
     }
 
-    pub fn get_handler(&self) -> Handler {
-        IRQ_HANDLERS.lock()[self.id as usize].unwrap()
-    }
-
     fn get_id(&self) -> IntId {
         match self.get_type() {
             InterruptType::SGI => IntId::sgi(self.id),
             InterruptType::PPI => IntId::ppi(self.id - PPI_START),
             InterruptType::SPI => IntId::spi(self.id - SPI_START),
         }
+    }
+
+    pub fn handle_irq(&self, state: ExceptionState) {
+        (self.handler)(&state);
     }
 
     pub fn register(&self) -> &Self {
@@ -157,8 +154,7 @@ impl Interrupt {
     }
 
     pub fn remove(&self) {
-        IRQ_NAMES.lock()[self.id as usize] = None;
-        IRQ_HANDLERS.lock()[self.id as usize] = None;
+        INTERRUPTS.lock()[self.id as usize] = None;
     }
 }
 

@@ -24,7 +24,7 @@ pub fn test_sgi() {
 
     // Configure an SGI(Software Generated Interrupt) and then send it to ourself.
     let sgi_id = 3;
-    irq::Interrupt::new(sgi_id, 0x01, 0x00, Some(test_sgi_handler), Some("test"))
+    irq::Interrupt::new(sgi_id, 0x01, 0x00, test_sgi_handler, "test")
         .register()
         .enable_irq(true);
     irq::send_sgi(sgi_id);

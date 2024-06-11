@@ -4,7 +4,6 @@ pub mod irq;
 pub mod state;
 
 use self::irq::Interrupt;
-use crate::arch::dtb;
 use crate::sync::spinlock::{RawSpinlock, Spinlock};
 use aarch64_cpu::asm::barrier;
 use aarch64_cpu::registers::*;
@@ -17,17 +16,12 @@ use state::ExceptionState;
 
 global_asm!(include_str!("vector_table.s"));
 
-const MAX_HANDLERS: usize = 1024;
+const MAX_INTERRUPTS: usize = 1024;
 
 type Handler = fn(state: &ExceptionState) -> bool;
 
-static INTERRUPTS: Spinlock<[Option<Interrupt>; MAX_HANDLERS]> =
-    Spinlock::new([None; MAX_HANDLERS]);
-
-static IRQ_NAMES: Spinlock<[Option<&'static str>; MAX_HANDLERS]> =
-    Spinlock::new([None; MAX_HANDLERS]);
-static IRQ_HANDLERS: Spinlock<[Option<Handler>; MAX_HANDLERS]> =
-    Spinlock::new([None; MAX_HANDLERS]);
+static INTERRUPTS: Spinlock<[Option<Interrupt>; MAX_INTERRUPTS]> =
+    Spinlock::new([None; MAX_INTERRUPTS]);
 
 pub(crate) static mut GIC: OnceCell<RawSpinlock, GicV3> = OnceCell::new();
 
@@ -41,9 +35,8 @@ pub fn init() {
 
     VBAR_EL1.set(unsafe { __exception_vector.get() as u64 });
 
-    let dtb = &dtb::get_dtb();
     // Set GIC
-    let gic = irq::init_gic(dtb);
+    let gic = irq::init_gic();
     unsafe { GIC.set(gic).unwrap() };
 
     barrier::isb(barrier::SY);
@@ -71,9 +64,9 @@ where
 
 pub fn print_all_handlers() {
     info!("IRQ Handlers");
-    for (i, name) in IRQ_NAMES.lock().iter().enumerate() {
-        if let Some(handler) = name {
-            info!("    {: >3}. {}", i, handler);
+    for (i, irq) in INTERRUPTS.lock().iter().enumerate() {
+        if let Some(handler) = irq {
+            info!("    {: >3}. {}", i, handler.get_name());
         }
     }
 }

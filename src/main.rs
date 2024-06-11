@@ -51,8 +51,8 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     println!();
 
     // info!("Testing Exceptions");
-    // arch::exception::test::test_segfault();
-    // arch::exception::test::test_sgi();
+    // arch::test::exception::test_segfault();
+    // arch::test::exception::test_sgi();
     // info!("Test Pass");
 
     info!("Current Exception Level: EL{}", get_current_el());
@@ -99,8 +99,6 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     console.clear_rx();
 
     loop {
-        let c = console.read_char();
-        console.write_char(c);
         unsafe { asm!("wfe", options(nomem, nostack)) }
     }
 }

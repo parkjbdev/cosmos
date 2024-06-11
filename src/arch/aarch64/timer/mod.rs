@@ -23,8 +23,8 @@ pub fn init() {
         u32::from_be_bytes(chunks[4]),
         u32::from_be_bytes(chunks[5]),
         0x00,
-        Some(timer_handler),
-        Some("NonSecure Timer"),
+        timer_handler,
+        "NonSecure Timer",
     );
 
     info!("Registering Timer.. ");
@@ -40,6 +40,7 @@ fn enable_timer_irq(enable: bool) {
 }
 
 fn timer_handler(_state: &ExceptionState) -> bool {
+    info!("Timer Event!");
     CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::CLEAR); // Concludes Timer IRQ
     set_timeout_irq_after(CNTFRQ_EL0.get());
 
@@ -138,5 +139,3 @@ pub fn sleep(sec: u64) {
 pub fn msleep(ms: u64) {
     nsleep(ms * 1_000_000)
 }
-
-struct CounterTimer {}

@@ -2,7 +2,7 @@
 // Exception vector in `vector_table.s` will call appropriate handler
 
 use super::state::ExceptionState;
-use crate::arch::exception::{IRQ_HANDLERS, IRQ_NAMES};
+use crate::arch::exception::INTERRUPTS;
 use aarch64_cpu::registers::*;
 use arm_gic::gicv3::GicV3;
 use log::info;
@@ -39,38 +39,37 @@ extern "C" fn handle_el1h_sync(state: &mut ExceptionState) -> *mut usize {
     println!("FAR_EL1: {:#018x}", FAR_EL1.get());
     println!("{}", state);
 
-    // Surviving from test_segfault
-    if FAR_EL1.get() == 8 * 1024 * 1024 * 1024 {
-        FAR_EL1.set(0);
-        println!("Resetting FAR_EL1 as {:#018x}", FAR_EL1.get());
-        println!("reviving from test_segfault\n");
-        state.elr_el1 += 4;
-        return core::ptr::null_mut();
-    }
+    // // Surviving from test_segfault
+    // if FAR_EL1.get() == 8 * 1024 * 1024 * 1024 {
+    //     FAR_EL1.set(0);
+    //     println!("Resetting FAR_EL1 as {:#018x}", FAR_EL1.get());
+    //     println!("reviving from test_segfault\n");
+    //     state.elr_el1 += 4;
+    //     return core::ptr::null_mut();
+    // }
 
     panic!("handle_el1h_sync Called!");
 }
 
-fn handle_interrupt(state: &ExceptionState) -> *mut usize {
+fn handle_interrupt(state: ExceptionState) -> *mut usize {
     if let Some(irqid) = GicV3::get_and_acknowledge_interrupt() {
         let id: u32 = irqid.into();
-        let name = IRQ_NAMES.lock()[id as usize].unwrap_or("Unnamed IRQ");
-        let handler = IRQ_HANDLERS.lock()[id as usize].unwrap();
+        let irq = INTERRUPTS.lock()[id as usize].unwrap();
+        irq.handle_irq(state);
 
-        info!("Received IRQ name: {} ({:?})", name, irqid);
-        handler(&state);
+        // dbg!("Received IRQ name: {} ({:?})", irq.get_name(), irqid);
         GicV3::end_interrupt(irqid);
     }
     core::ptr::null_mut()
 }
 
 #[no_mangle]
-extern "C" fn handle_el1h_irq(state: &ExceptionState) -> *mut usize {
+extern "C" fn handle_el1h_irq(state: ExceptionState) -> *mut usize {
     handle_interrupt(state)
 }
 
 #[no_mangle]
-extern "C" fn handle_el1h_fiq(state: &ExceptionState) -> *mut usize {
+extern "C" fn handle_el1h_fiq(state: ExceptionState) -> *mut usize {
     handle_interrupt(state)
 }
 
