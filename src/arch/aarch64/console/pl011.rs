@@ -73,6 +73,11 @@ impl PL011Uart {
 
         Some(c)
     }
+    pub fn echo(&mut self) {
+        while let Some(c) = self._read_char(true) {
+            self._write_char(c)
+        }
+    }
 }
 
 impl fmt::Write for PL011Uart {
@@ -110,13 +115,14 @@ impl console::interface::Read for PL011Uart {
 }
 
 impl interrupt::interface::IRQHandler for PL011Uart {
-    fn handler(&mut self) {
+    fn handler(&mut self, cb: fn()) {
         let pending = self.registers.MIS.extract();
         self.registers.ICR.write(ICR::ALL::CLEAR);
         if pending.matches_any(MIS::RXMIS::SET + MIS::RTMIS::SET) {
-            while let Some(c) = self._read_char(true) {
-                self._write_char(c)
-            }
+            cb();
+            // while let Some(c) = self._read_char(true) {
+            //     self._write_char(c)
+            // }
         }
     }
 }

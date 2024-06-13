@@ -5,6 +5,7 @@ use crate::arch::console::pl011::PL011Uart;
 use crate::arch::constants::SERIAL_PORT_ADDRESS;
 use crate::arch::dtb;
 use crate::arch::exception::irq::Interrupt;
+use crate::console::interface::Read;
 use crate::interrupt::interface::IRQHandler;
 use crate::sync::spinlock::RawSpinlock;
 use generic_once_cell::OnceCell;
@@ -45,7 +46,11 @@ pub fn init() {
         trigger,
         0x00,
         |state| {
-            unsafe { CONSOLE.get_mut().unwrap().handler() };
+            unsafe {
+                CONSOLE.get_mut().unwrap().handler(|| {
+                    CONSOLE.get_mut().unwrap().echo();
+                })
+            };
             true
         },
         "Keyboard Interrupt",
