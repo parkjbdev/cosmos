@@ -1,4 +1,3 @@
-pub trait RegisterInterrupt {
-    fn init_irq(&self);
+pub trait IRQHandler {
     fn handler(&mut self);
 }

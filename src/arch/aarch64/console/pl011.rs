@@ -1,12 +1,7 @@
-use crate::{
-    arch::{dtb, exception::irq::Interrupt},
-    console, interrupt,
-};
-use core::fmt;
-use log::info;
-use tock_registers::interfaces::{Readable, Writeable};
-
 use super::pl011_regs::*;
+use crate::{console, interrupt};
+use core::fmt;
+use tock_registers::interfaces::{Readable, Writeable};
 
 pub struct PL011Uart {
     pub registers: Registers,
@@ -114,52 +109,7 @@ impl console::interface::Read for PL011Uart {
     }
 }
 
-impl interrupt::interface::RegisterInterrupt for PL011Uart {
-    fn init_irq(&self) {
-        let dtb = &dtb::get_dtb();
-        let pl011_dt = dtb.get_property("/pl011", "interrupts").unwrap();
-
-        const SPLIT_SIZE: usize = core::mem::size_of::<u32>();
-        let chunks: &[[u8; SPLIT_SIZE]] = unsafe { pl011_dt.as_chunks_unchecked() };
-        let irq_type = u32::from_be_bytes(chunks[0]);
-
-        let id = u32::from_be_bytes(chunks[1]);
-        let trigger = u32::from_be_bytes(chunks[2]);
-
-        let _keyboard: Interrupt = Interrupt::from_raw(
-            irq_type,
-            id,
-            trigger,
-            0x00,
-            |state| {
-                let pending = REGISTERS.MIS.extract();
-                REGISTERS.ICR.write(ICR::ALL::CLEAR);
-                if pending.matches_any(MIS::RXMIS::SET + MIS::RTMIS::SET) {
-                    if REGISTERS.FR.matches_all(FR::RXFE::SET) {
-                        return true;
-                    }
-
-                    let mut c = REGISTERS.DR.get() as u8 as char;
-                    if c == '\r' {
-                        c = '\n';
-                    }
-
-                    // Flush
-                    while REGISTERS.FR.matches_all(FR::BUSY::SET) {
-                        unsafe { core::arch::asm!("nop", options(nomem, nostack)) }
-                    }
-                    // Write
-                    info!("{c}");
-                    // REGISTERS.DR.set(c as u32);
-                }
-
-                true
-            },
-            "Keyboard Interrupt",
-        );
-        _keyboard.register();
-    }
-
+impl interrupt::interface::IRQHandler for PL011Uart {
     fn handler(&mut self) {
         let pending = self.registers.MIS.extract();
         self.registers.ICR.write(ICR::ALL::CLEAR);

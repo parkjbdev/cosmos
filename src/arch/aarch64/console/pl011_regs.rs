@@ -1,6 +1,5 @@
 use core::{marker::PhantomData, ops};
 use tock_registers::{
-    interfaces::{Readable, Writeable},
     register_bitfields, register_structs,
     registers::{ReadOnly, ReadWrite, WriteOnly},
 };
@@ -138,5 +137,3 @@ impl<T> ops::Deref for MMIODerefWrapper<T> {
 }
 
 pub type Registers = MMIODerefWrapper<RegisterBlock>;
-
-pub const REGISTERS: Registers = unsafe { Registers::new(0x09000000) };
