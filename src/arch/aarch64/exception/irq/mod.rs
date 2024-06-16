@@ -2,9 +2,13 @@ pub mod irq_type;
 
 use self::irq_type::InterruptType;
 use super::state::ExceptionState;
-use crate::arch::{dtb, exception::{Handler, GIC, INTERRUPTS}};
+use crate::arch::{
+    dtb,
+    exception::{Handler, GIC, INTERRUPTS},
+};
+use aarch64_cpu::asm;
 use arm_gic::gicv3::{GicV3, IntId, SgiTarget, Trigger};
-use core::{arch::asm, fmt::Display};
+use core::fmt::Display;
 
 pub fn init_gic() -> GicV3 {
     let dtb = &dtb::get_dtb();
@@ -101,9 +105,8 @@ impl Interrupt {
             INTERRUPTS.lock()[id as usize] = Some(ret);
         }
 
-        unsafe {
-            asm!("dsb nsh", "isb", options(nostack, nomem, preserves_flags));
-        }
+        asm::barrier::dsb(asm::barrier::NSH);
+        asm::barrier::isb(asm::barrier::SY);
 
         ret
     }
@@ -140,9 +143,8 @@ impl Interrupt {
         gic.set_trigger(intid, self.trigger);
         gic.enable_interrupt(intid, true);
 
-        unsafe {
-            asm!("dsb nsh", "isb", options(nostack, nomem, preserves_flags));
-        }
+        asm::barrier::dsb(asm::barrier::NSH);
+        asm::barrier::isb(asm::barrier::SY);
 
         self
     }

@@ -18,7 +18,7 @@ pub fn test_sgi() {
     info!("Testing Software Generated Interrupt(SGI)");
 
     fn test_sgi_handler(state: &ExceptionState) -> bool {
-        println!("SGI Test Success");
+        info!("SGI Test Success");
         true
     }
 

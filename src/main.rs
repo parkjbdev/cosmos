@@ -21,8 +21,9 @@ extern crate log as log_crate;
 use crate::arch::console::CONSOLE;
 use crate::arch::exception::el::get_current_el;
 use crate::console::interface::{Read, Write};
+use aarch64_cpu::asm;
 use arm_gic::{irq_disable, irq_enable};
-use core::{alloc::Layout, arch::asm};
+use core::alloc::Layout;
 use log_crate::{error, info};
 
 #[no_mangle]
@@ -99,7 +100,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     console.clear_rx();
 
     loop {
-        unsafe { asm!("wfe", options(nomem, nostack)) }
+        asm::wfe();
     }
 }
 
