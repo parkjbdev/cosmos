@@ -5,7 +5,6 @@ use crate::arch::console::pl011::PL011Uart;
 use crate::arch::constants::SERIAL_PORT_ADDRESS;
 use crate::arch::dtb;
 use crate::arch::exception::irq::Interrupt;
-use crate::console::interface::Read;
 use crate::interrupt::interface::IRQHandler;
 use crate::sync::spinlock::RawSpinlock;
 use generic_once_cell::OnceCell;
@@ -35,15 +34,11 @@ pub fn init() {
 
     const SPLIT_SIZE: usize = core::mem::size_of::<u32>();
     let chunks: &[[u8; SPLIT_SIZE]] = unsafe { pl011_dt.as_chunks_unchecked() };
-    let irq_type = u32::from_be_bytes(chunks[0]);
-
-    let id = u32::from_be_bytes(chunks[1]);
-    let trigger = u32::from_be_bytes(chunks[2]);
 
     Interrupt::from_raw(
-        irq_type,
-        id,
-        trigger,
+        u32::from_be_bytes(chunks[0]),
+        u32::from_be_bytes(chunks[1]),
+        u32::from_be_bytes(chunks[2]),
         0x00,
         |state| {
             unsafe {

@@ -5,7 +5,6 @@ use super::state::ExceptionState;
 use crate::arch::exception::INTERRUPTS;
 use aarch64_cpu::registers::*;
 use arm_gic::gicv3::GicV3;
-use log::info;
 
 /* Current EL with SP0 */
 // Exception is taken from EL1 while stack pointer was shared with EL0.

@@ -38,8 +38,8 @@ pub fn init_gic() -> GicV3 {
 
     // TODO: allocate gicd and gicr to virtualmem
     let mut gic = unsafe { GicV3::new(gicd_start, gicr_start) };
-    gic.setup();
     GicV3::set_priority_mask(0xff);
+    gic.setup();
 
     gic
 }

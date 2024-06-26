@@ -22,6 +22,7 @@ pub fn init() {
         u32::from_be_bytes(chunks[3]),
         u32::from_be_bytes(chunks[4]),
         u32::from_be_bytes(chunks[5]),
+        // 0xf7,
         0x00,
         timer_handler,
         "NonSecure Timer",
@@ -30,7 +31,7 @@ pub fn init() {
     info!("Registering Timer.. ");
     timer_irq.register();
 
-    set_timeout_irq_after(CNTFRQ_EL0.get());
+    // set_timeout_irq_after(CNTFRQ_EL0.get());
     enable_timer_irq(true);
 }
 
@@ -41,26 +42,23 @@ fn enable_timer_irq(enable: bool) {
 
 fn timer_handler(_state: &ExceptionState) -> bool {
     info!("Timer Event!");
-    CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::CLEAR); // Concludes Timer IRQ
-    set_timeout_irq_after(CNTFRQ_EL0.get());
+    // Concludes Timer IRQ
+    CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::CLEAR);
+    // TODO: Create Timer Queue
+    // set_timeout_irq_after(CNTFRQ_EL0.get());
 
     true
 }
 
 // Interrupt Based Timeout
-fn set_timeout_irq(target: u64) {
+pub fn set_timeout_irq(target: u64) {
     CNTP_CVAL_EL0.set(target);
     CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::SET + CNTP_CTL_EL0::IMASK::CLEAR);
 }
 
-fn set_timeout_irq_after(target: u64) {
+pub fn set_timeout_irq_after(target: u64) {
     CNTP_TVAL_EL0.set(target);
     CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::SET + CNTP_CTL_EL0::IMASK::CLEAR);
-}
-
-#[allow(dead_code)]
-pub fn conclude_timeout_irq() {
-    CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::CLEAR);
 }
 
 pub fn print_timer_reg() {
@@ -74,10 +72,10 @@ pub fn print_timer_reg() {
     info!("CNTP_CVAL_EL0: {:?}", CNTP_CVAL_EL0.get());
 }
 
-struct JiffyValue(u64);
+struct CounterTimerValue(u64);
 
-impl From<JiffyValue> for Duration {
-    fn from(value: JiffyValue) -> Self {
+impl From<CounterTimerValue> for Duration {
+    fn from(value: CounterTimerValue) -> Self {
         let cntfrq = CNTFRQ_EL0.get();
 
         let secs = value.0 / cntfrq;
@@ -88,7 +86,7 @@ impl From<JiffyValue> for Duration {
 }
 
 pub fn resolution() -> Duration {
-    Duration::from(JiffyValue(1))
+    Duration::from(CounterTimerValue(1))
 }
 
 // #[no_mangle]
@@ -102,40 +100,26 @@ pub fn uptime() -> Duration {
 }
 
 fn uptime_unsafe() -> Duration {
-    let jiffies = get_jiffies_unsafe();
+    let cnt = CNTPCT_EL0.get();
+    let freq = CNTFRQ_EL0.get();
 
-    let cntfrq = CNTFRQ_EL0.get();
-
-    let secs = jiffies / cntfrq;
-    let nanos = (jiffies % cntfrq * 1_000_000_000 / cntfrq) as u32;
+    let secs = cnt / freq;
+    let nanos = (cnt % freq * 1_000_000_000 / freq) as u32;
 
     let duration = Duration::new(secs, nanos);
     duration
 }
 
-fn get_jiffies_unsafe() -> u64 {
-    CNTPCT_EL0.get()
-}
-
-#[allow(dead_code)]
-pub fn get_jiffies() -> u64 {
-    barrier::isb(barrier::SY);
-    get_jiffies_unsafe()
-}
-
-#[allow(dead_code)]
-pub fn nsleep(ns: u64) {
+pub fn spin_for_ns(ns: u64) {
     barrier::isb(barrier::SY);
     let end = uptime_unsafe() + Duration::from_nanos(ns);
     while uptime_unsafe() < end {}
 }
 
-#[allow(dead_code)]
-pub fn sleep(sec: u64) {
-    nsleep(sec * 1_000_000_000)
+pub fn spin_for(sec: u64) {
+    spin_for_ns(sec * 1_000_000_000)
 }
 
-#[allow(dead_code)]
-pub fn msleep(ms: u64) {
-    nsleep(ms * 1_000_000)
+pub fn spin_for_ms(ms: u64) {
+    spin_for_ns(ms * 1_000_000)
 }

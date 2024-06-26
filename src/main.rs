@@ -11,7 +11,7 @@
 
 #[macro_use]
 pub mod print;
-
+pub mod dev;
 pub mod arch;
 pub mod console;
 pub mod interrupt;
@@ -22,7 +22,9 @@ use crate::arch::console::CONSOLE;
 use crate::arch::exception::el::get_current_el;
 use crate::console::interface::{Read, Write};
 use aarch64_cpu::asm;
+use aarch64_cpu::registers::CNTFRQ_EL0;
 use arm_gic::{irq_disable, irq_enable};
+use tock_registers::interfaces::Readable;
 use core::alloc::Layout;
 use log_crate::{error, info};
 
@@ -42,6 +44,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
         arch::timer::resolution().as_nanos()
     );
     arch::timer::init();
+    arch::timer::set_timeout_irq_after(CNTFRQ_EL0.get());
 
     irq_enable();
 
