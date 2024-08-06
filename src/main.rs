@@ -1,5 +1,4 @@
 #![feature(const_refs_to_static)]
-#![feature(panic_info_message)]
 #![feature(slice_as_chunks)]
 #![feature(strict_provenance)]
 #![feature(exposed_provenance)]
@@ -11,7 +10,6 @@
 
 #[macro_use]
 pub mod print;
-pub mod dev;
 pub mod arch;
 pub mod console;
 pub mod interrupt;
@@ -114,7 +112,7 @@ fn handle_alloc_error(_layout: Layout) -> ! {
 
 #[panic_handler]
 fn handle_panic(info: &core::panic::PanicInfo<'_>) -> ! {
-    error!("KERNEL PANIC: {}", info.message().unwrap());
+    error!("KERNEL PANIC: {}", info.message());
     let (file, line, column) = match info.location() {
         Some(location) => (location.file(), location.line(), location.column()),
         None => ("unknown", 0, 0),
