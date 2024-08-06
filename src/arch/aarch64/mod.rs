@@ -1,3 +1,4 @@
+pub mod drivers;
 pub mod console;
 pub mod constants;
 pub mod dtb;

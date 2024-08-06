@@ -1,8 +1,10 @@
-use super::pl011_regs::*;
 use crate::{console, interrupt};
 use core::fmt;
 use aarch64_cpu::asm;
 use tock_registers::interfaces::{Readable, Writeable};
+
+mod registers;
+use registers::*;
 
 pub struct PL011Uart {
     pub registers: Registers,

@@ -1,8 +1,5 @@
-mod pl011;
-pub mod pl011_regs;
-
-use crate::arch::console::pl011::PL011Uart;
 use crate::arch::constants::SERIAL_PORT_ADDRESS;
+use crate::arch::drivers::pl011::PL011Uart;
 use crate::arch::dtb;
 use crate::arch::exception::irq::Interrupt;
 use crate::interrupt::interface::IRQHandler;
