@@ -1,3 +1,6 @@
+#![allow(unused_variables)]
+#![allow(dead_code)]
+
 #![feature(const_refs_to_static)]
 #![feature(slice_as_chunks)]
 #![feature(strict_provenance)]
@@ -16,15 +19,15 @@ pub mod interrupt;
 pub mod sync;
 
 extern crate log as log_crate;
-use crate::arch::console::CONSOLE;
+use crate::arch::{console::CONSOLE, exception::irq::print_interrupts};
 use crate::arch::exception::el::get_current_el;
-use crate::console::interface::{Read, Write};
+use crate::console::interface::Read;
 use aarch64_cpu::asm;
 use aarch64_cpu::registers::CNTFRQ_EL0;
 use arm_gic::{irq_disable, irq_enable};
-use tock_registers::interfaces::Readable;
 use core::alloc::Layout;
 use log_crate::{error, info};
+use tock_registers::interfaces::Readable;
 
 #[no_mangle]
 pub(crate) unsafe extern "C" fn kernel_main() -> ! {
@@ -57,7 +60,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // arch::test::exception::test_sgi();
     // info!("Test Pass");
 
-    info!("Current Exception Level: EL{}", get_current_el());
+    info!("Current Exception Level: {}", get_current_el());
 
     // CPU & RAM Info
     info!("CPU Count: {} CPUs", arch::get_cpus());
@@ -65,7 +68,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     info!("RAM: start {:#x} size {:#x}", ram_start, ram_size);
 
     // Memory Layout
-    info!("Memory Layout");
+    info!("========== Memory Layout ==========");
     info!(
         "    {: <30}: [{:p} ~ {:p}]",
         "Kernel",
@@ -91,7 +94,8 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
         &arch::__boot_core_stack_end_exclusive
     );
 
-    arch::exception::print_all_handlers();
+
+    print_interrupts();
 
     info!("Initialization Done!");
     info!("Echoing Inputs");

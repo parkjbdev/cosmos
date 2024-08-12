@@ -1,6 +1,6 @@
-pub mod drivers;
 pub mod console;
 pub mod constants;
+pub mod drivers;
 pub mod dtb;
 pub mod exception;
 pub mod mm;

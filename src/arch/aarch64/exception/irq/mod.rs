@@ -2,15 +2,33 @@ pub mod irq_type;
 
 use self::irq_type::InterruptType;
 use super::state::ExceptionState;
-use crate::arch::{
-    dtb,
-    exception::{Handler, GIC, INTERRUPTS},
-};
+use super::Handler;
+use crate::arch::dtb;
+use crate::sync::spinlock::{RawSpinlock, Spinlock};
 use aarch64_cpu::asm;
+use aarch64_cpu::registers::*;
 use arm_gic::gicv3::{GicV3, IntId, SgiTarget, Trigger};
+use log::info;
 use core::fmt::Display;
+use generic_once_cell::OnceCell;
 
-pub fn init_gic() -> GicV3 {
+const MAX_INTERRUPTS: usize = 1024;
+pub static INTERRUPTS: Spinlock<[Option<Interrupt>; MAX_INTERRUPTS]> =
+    Spinlock::new([None; MAX_INTERRUPTS]);
+
+pub(crate) static mut GIC: OnceCell<RawSpinlock, GicV3> = OnceCell::new();
+
+pub fn exec_with_irq_disabled<F, R>(f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    let daif = DAIF.get();
+    let ret = f();
+    DAIF.set(daif);
+    ret
+}
+
+pub fn init_gic() -> Result<(), GicV3> {
     let dtb = &dtb::get_dtb();
     // Check Compatible GIC
     let compat = core::str::from_utf8(dtb.get_property("/intc", "compatible").unwrap()).unwrap();
@@ -41,7 +59,7 @@ pub fn init_gic() -> GicV3 {
     GicV3::set_priority_mask(0xff);
     gic.setup();
 
-    gic
+    unsafe { GIC.set(gic) }
 }
 
 const SGI_START: u32 = 0;
@@ -61,6 +79,23 @@ pub struct Interrupt {
     name: &'static str,
     handler: Handler,
 }
+
+pub fn register_irq(irq_type: u32, id: u32, trigger: u32) {
+    let id = u32::from(match irq_type {
+        0 => IntId::spi(id),
+        1 => IntId::ppi(id),
+        _ => IntId::sgi(id),
+    });
+    let trigger = match trigger {
+        4 | 8 => Trigger::Level,
+        2 | 1 => Trigger::Edge,
+        // SGI is always edge triggered
+        _ => Trigger::Edge,
+        // _ => panic!("Invalid interrupt trigger type!"),
+    };
+}
+
+pub fn register_handler(id: u32, handler: fn()) {}
 
 impl Interrupt {
     pub fn from_raw(
@@ -137,7 +172,7 @@ impl Interrupt {
     }
 
     pub fn register(&self) -> &Self {
-        let gic = unsafe { GIC.get_mut().unwrap() };
+        let gic = unsafe { GIC.get_mut().expect("GIC is not initialized") };
         let intid = self.get_id();
         gic.set_interrupt_priority(intid, self.prio);
         gic.set_trigger(intid, self.trigger);
@@ -169,6 +204,27 @@ impl Display for Interrupt {
             self.id,
             self.get_name(),
         )
+    }
+}
+
+impl core::fmt::Debug for Interrupt {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "    {: >3}. {}",
+            u32::from(self.get_id()),
+            self.get_name()
+        )
+    }
+}
+
+pub fn print_interrupts() {
+    info!("========== Interrupts ==========");
+    let interrupts = INTERRUPTS.lock();
+    for interrupt in interrupts.iter() {
+        if !interrupt.is_none() {
+            info!("{:?}", interrupt.unwrap());
+        }
     }
 }
 

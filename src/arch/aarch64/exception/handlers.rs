@@ -2,7 +2,7 @@
 // Exception vector in `vector_table.s` will call appropriate handler
 
 use super::state::ExceptionState;
-use crate::arch::exception::INTERRUPTS;
+use crate::arch::exception::irq::INTERRUPTS;
 use aarch64_cpu::registers::*;
 use arm_gic::gicv3::GicV3;
 
