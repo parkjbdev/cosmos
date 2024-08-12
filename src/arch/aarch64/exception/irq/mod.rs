@@ -8,9 +8,10 @@ use crate::sync::spinlock::{RawSpinlock, Spinlock};
 use aarch64_cpu::asm;
 use aarch64_cpu::registers::*;
 use arm_gic::gicv3::{GicV3, IntId, SgiTarget, Trigger};
-use log::info;
+pub use arm_gic::{irq_disable, irq_enable};
 use core::fmt::Display;
 use generic_once_cell::OnceCell;
+use log::info;
 
 const MAX_INTERRUPTS: usize = 1024;
 pub static INTERRUPTS: Spinlock<[Option<Interrupt>; MAX_INTERRUPTS]> =

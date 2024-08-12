@@ -1,6 +1,5 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
-
 #![feature(const_refs_to_static)]
 #![feature(slice_as_chunks)]
 #![feature(strict_provenance)]
@@ -19,20 +18,16 @@ pub mod interrupt;
 pub mod sync;
 
 extern crate log as log_crate;
-use crate::arch::{console::CONSOLE, exception::irq::print_interrupts};
+use crate::arch::console::CONSOLE;
 use crate::arch::exception::el::get_current_el;
 use crate::console::interface::Read;
-use aarch64_cpu::asm;
-use aarch64_cpu::registers::CNTFRQ_EL0;
-use arm_gic::{irq_disable, irq_enable};
 use core::alloc::Layout;
 use log_crate::{error, info};
-use tock_registers::interfaces::Readable;
 
 #[no_mangle]
 pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // Initialize Exceptions
-    irq_disable();
+    arch::irq::irq_disable();
     arch::exception::init();
 
     // Initialize Console
@@ -45,9 +40,8 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
         arch::timer::resolution().as_nanos()
     );
     arch::timer::init();
-    arch::timer::set_timeout_irq_after(CNTFRQ_EL0.get());
 
-    irq_enable();
+    arch::irq::irq_enable();
 
     println!("       _________  _________ ___  ____  _____");
     println!("      / ___/ __ \\/ ___/ __ `__ \\/ __ \\/ ___/");
@@ -94,8 +88,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
         &arch::__boot_core_stack_end_exclusive
     );
 
-
-    print_interrupts();
+    arch::irq::print_interrupts();
 
     info!("Initialization Done!");
     info!("Echoing Inputs");
@@ -105,7 +98,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     console.clear_rx();
 
     loop {
-        asm::wfe();
+        arch::halt();
     }
 }
 

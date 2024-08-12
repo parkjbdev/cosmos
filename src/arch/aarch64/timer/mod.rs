@@ -22,7 +22,6 @@ pub fn init() {
         u32::from_be_bytes(chunks[3]),
         u32::from_be_bytes(chunks[4]),
         u32::from_be_bytes(chunks[5]),
-        // 0xf7,
         0x00,
         timer_handler,
         "NonSecure Timer",
@@ -31,8 +30,10 @@ pub fn init() {
     info!("Registering Timer.. ");
     timer_irq.register();
 
-    // set_timeout_irq_after(CNTFRQ_EL0.get());
     enable_timer_irq(true);
+
+    // Test
+    set_timeout_irq_after(CNTFRQ_EL0.get());
 }
 
 fn enable_timer_irq(enable: bool) {
@@ -45,7 +46,9 @@ fn timer_handler(_state: &ExceptionState) -> bool {
     // Concludes Timer IRQ
     CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::CLEAR);
     // TODO: Create Timer Queue
-    // set_timeout_irq_after(CNTFRQ_EL0.get());
+
+    // Test
+    set_timeout_irq_after(CNTFRQ_EL0.get());
 
     true
 }

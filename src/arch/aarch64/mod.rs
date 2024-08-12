@@ -9,6 +9,9 @@ pub mod test;
 pub mod timer;
 
 pub use constants::*;
+pub use exception::irq;
+
+use aarch64_cpu::asm;
 
 pub fn get_cpus() -> usize {
     let dtb = &dtb::get_dtb();
@@ -33,4 +36,8 @@ pub fn get_ramrange() -> (u64, u64) {
     let ram_size = u64::from_be_bytes(size.try_into().unwrap());
 
     (ram_start, ram_size)
+}
+
+pub fn halt() {
+    asm::wfi();
 }
