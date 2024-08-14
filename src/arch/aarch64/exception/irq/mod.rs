@@ -30,15 +30,15 @@ where
 }
 
 pub fn init_gic() -> Result<(), GicV3> {
-    let dtb = &dtb::get_dtb();
     // Check Compatible GIC
-    let compat = core::str::from_utf8(dtb.get_property("/intc", "compatible").unwrap()).unwrap();
+    let compat =
+        core::str::from_utf8(dtb::get_dtb().get_property("/intc", "compatible").unwrap()).unwrap();
     if !compat.contains("arm,gic-v3") {
         panic!("Compatible GIC (arm,gic-v3) Not Found");
     }
 
     // Parse GICD & GICC from the dtb /intc reg
-    let reg = dtb.get_property("/intc", "reg").unwrap();
+    let reg = dtb::get_dtb().get_property("/intc", "reg").unwrap();
 
     // GIC Distributor interface (GICD)
     let (slice, residual_slice) = reg.split_at(core::mem::size_of::<u64>());

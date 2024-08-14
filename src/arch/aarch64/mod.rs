@@ -14,15 +14,14 @@ pub use exception::irq;
 use aarch64_cpu::asm;
 
 pub fn get_cpus() -> usize {
-    let dtb = &dtb::get_dtb();
-    dtb.enum_subnodes("/cpus")
+    dtb::get_dtb()
+        .enum_subnodes("/cpus")
         .filter(|cpu| cpu.split('@').next().unwrap() == "cpu")
         .count()
 }
 
 pub fn get_ramrange() -> (u64, u64) {
-    let dtb = &dtb::get_dtb();
-    let mem_devt = dtb.get_property("/memory", "device_type").unwrap();
+    let mem_devt = dtb::get_dtb().get_property("/memory", "device_type").unwrap();
     assert!(
         core::str::from_utf8(mem_devt)
             .unwrap()
@@ -30,7 +29,7 @@ pub fn get_ramrange() -> (u64, u64) {
             == "memory"
     );
 
-    let mem_reg = dtb.get_property("/memory", "reg").unwrap();
+    let mem_reg = dtb::get_dtb().get_property("/memory", "reg").unwrap();
     let (start, size) = mem_reg.split_at(core::mem::size_of::<u64>());
     let ram_start = u64::from_be_bytes(start.try_into().unwrap());
     let ram_size = u64::from_be_bytes(size.try_into().unwrap());
