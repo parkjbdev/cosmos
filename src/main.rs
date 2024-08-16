@@ -1,12 +1,13 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
-#![feature(const_refs_to_static)]
-#![feature(slice_as_chunks)]
-#![feature(strict_provenance)]
-#![feature(exposed_provenance)]
 #![feature(alloc_error_handler)]
 #![feature(asm_const)]
+#![feature(const_refs_to_static)]
+// #![feature(core_intrinsics)]
+#![feature(exposed_provenance)]
 #![feature(naked_functions)]
+#![feature(slice_as_chunks)]
+#![feature(strict_provenance)]
 #![no_main]
 #![no_std]
 
@@ -15,7 +16,9 @@ pub mod print;
 pub mod arch;
 pub mod console;
 pub mod interrupt;
+pub mod mm;
 pub mod sync;
+pub mod utils;
 
 extern crate log as log_crate;
 use crate::arch::console::CONSOLE;
@@ -49,50 +52,60 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     println!("     \\___/\\____/____/_/ /_/ /_/\\____/____/  ");
     println!();
 
+    info!("CPU Count: {} CPUs", arch::get_cpus());
+
     // info!("Testing Exceptions");
     // arch::test::exception::test_segfault();
     // arch::test::exception::test_sgi();
     // info!("Test Pass");
 
-    info!("Current Exception Level: {}", get_current_el());
+    info!("Initializing Memory Management");
+
+    info!("PAGE_SIZE: {}", arch::mm::get_page_size());
+    info!("Tip: You can change the PAGE_SIZE in kernel.ld");
+    arch::mm::init();
 
     // CPU & RAM Info
-    info!("CPU Count: {} CPUs", arch::get_cpus());
     let (ram_start, ram_size) = arch::get_ramrange();
     info!("RAM: start {:#x} size {:#x}", ram_start, ram_size);
 
     // Memory Layout
-    info!("========== Memory Layout ==========");
+    info!("Memory Layout: ");
     info!(
-        "    {: <30}: [{:p} ~ {:p}]",
+        "      {: <30}: [{:p} ~ {:p}]",
         "Kernel",
         &arch::kernel_start,
         &arch::kernel_end
     );
     info!(
-        "    {: <30}: [{:p} ~ {:p}]",
+        "      {: <30}: [{:p} ~ {:p}]",
         ".text",
         &arch::__text_start,
         &arch::__text_end
     );
     info!(
-        "    {: <30}: [{:p} - {:p}]",
+        "      {: <30}: [{:p} - {:p}]",
         ".bss",
         &arch::__bss_start,
         &arch::__bss_end_exclusive
     );
     info!(
-        "    {: <30}: [{:p} ~ {:p}]",
+        "      {: <30}: [{:p} ~ {:p}]",
         "boot_core_stack_start",
         &arch::__boot_core_stack_start,
         &arch::__boot_core_stack_end_exclusive
     );
 
+    info!("Current Exception Level: {}", get_current_el());
+
+    info!("Exception handling state:");
+    arch::exception::print_state();
+
+    info!("Registered IRQ handlers:");
     arch::irq::print_interrupts();
 
-    info!("Initialization Done!");
     info!("Echoing Inputs");
-    info!("Waiting for events");
+    info!("Waiting for interrupts");
 
     let console = CONSOLE.get_mut().unwrap();
     console.clear_rx();

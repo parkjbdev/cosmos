@@ -8,7 +8,8 @@ use crate::sync::spinlock::{RawSpinlock, Spinlock};
 use aarch64_cpu::asm;
 use aarch64_cpu::registers::*;
 use arm_gic::gicv3::{GicV3, IntId, SgiTarget, Trigger};
-pub use arm_gic::{irq_disable, irq_enable};
+use tock_registers::interfaces::ReadWriteable;
+// pub use arm_gic::{irq_disable, irq_enable};
 use core::fmt::Display;
 use generic_once_cell::OnceCell;
 use log::info;
@@ -212,7 +213,7 @@ impl core::fmt::Debug for Interrupt {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
-            "    {: >3}. {}",
+            "      {: <3}. {}",
             u32::from(self.get_id()),
             self.get_name()
         )
@@ -220,7 +221,6 @@ impl core::fmt::Debug for Interrupt {
 }
 
 pub fn print_interrupts() {
-    info!("========== Interrupts ==========");
     let interrupts = INTERRUPTS.lock();
     for interrupt in interrupts.iter() {
         if !interrupt.is_none() {
@@ -239,4 +239,20 @@ pub fn send_sgi(id: u32) {
             target_list: 0b1,
         },
     );
+}
+
+pub fn irq_enable() {
+    DAIF.modify(DAIF::I::Unmasked);
+}
+
+pub fn irq_disable() {
+    DAIF.modify(DAIF::I::Masked);
+}
+
+pub fn fiq_enable() {
+    DAIF.modify(DAIF::F::Unmasked);
+}
+
+pub fn fiq_disable() {
+    DAIF.modify(DAIF::F::Masked);
 }

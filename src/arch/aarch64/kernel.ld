@@ -1,9 +1,9 @@
-/* Parts of this linker script are directly taken from Andre Richters Project:
- * https://github.com/rust-embedded/rust-raspberrypi-OS-tutorials/blob/master/16_virtual_mem_part4_higher_half_kernel/src/bsp/raspberrypi/link.ld 
-*/
-
 OUTPUT_FORMAT("elf64-littleaarch64")
 OUTPUT_ARCH("aarch64")
+
+__PAGE_SIZE = 64K;
+PAGE_MASK = __PAGE_SIZE - 1;
+
 ENTRY(_start)
 kernel_start = 0x40200000;
 
@@ -22,17 +22,20 @@ SECTIONS
     __text_start = .;
     KEEP(*(.text._start))
     *(.text._start_cosmos)
-    *(.text)
-    *(.text.*)
+    *(.text*)
     __text_end = .;
   } :segment_rx
 
   .rodata : ALIGN(8) {
     __rodata_start = .;
+    PAGE_SIZE = .;
+    QUAD(__PAGE_SIZE);
     *(.rodata)
     *(.rodata.*)
     __rodata_end = .;
   } :segment_ro
+
+  . = ALIGN(__PAGE_SIZE);
 
   .data   : ALIGN(8) {
     *(.data)
@@ -51,7 +54,7 @@ SECTIONS
        /* Global offset table Todo */
     *(.got)
   } :segment_ro
-  /* ASSERT(SIZEOF(.got) == 0, "Relocation Not Supported"); */
+  ASSERT(SIZEOF(.got) == 0, "Relocation Not Supported")
 
   . = ALIGN(4K); /* Align to page boundary */
 

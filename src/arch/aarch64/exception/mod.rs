@@ -33,3 +33,17 @@ pub fn init() {
 
     barrier::isb(barrier::SY);
 }
+
+pub fn print_state() {
+    use crate::info;
+
+    #[rustfmt::skip]
+    let to_mask_str = |x| -> _ {
+        if x { "Masked" } else { "Unmasked" }
+    };
+
+    info!("      Debug:  {}", to_mask_str(DAIF.is_set(DAIF::D)));
+    info!("      SError: {}", to_mask_str(DAIF.is_set(DAIF::A)));
+    info!("      IRQ:    {}", to_mask_str(DAIF.is_set(DAIF::I)));
+    info!("      FIQ:    {}", to_mask_str(DAIF.is_set(DAIF::F)));
+}
