@@ -18,11 +18,12 @@ SECTIONS
 {
   . = kernel_start;
 
-  .text : {
+  .text : ALIGN(8) {
     __text_start = .;
     KEEP(*(.text._start))
     *(.text._start_cosmos)
     *(.text*)
+    . = ALIGN(8);
     __text_end = .;
   } :segment_rx
 

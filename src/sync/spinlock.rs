@@ -1,5 +1,4 @@
 use core::sync::atomic::{AtomicBool, Ordering};
-
 use lock_api::{GuardSend, RawMutex};
 
 pub struct RawSpinlock(AtomicBool);

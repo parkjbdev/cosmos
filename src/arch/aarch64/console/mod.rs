@@ -9,15 +9,19 @@ pub static mut CONSOLE: OnceCell<RawSpinlock, PL011Uart> = OnceCell::new();
 
 pub fn init() {
     let mut pl011 = {
-        use crate::arch::constants::SERIAL_PORT_ADDRESS;
+        // use crate::arch::constants::SERIAL_PORT_ADDRESS;
 
-        let stdout = dtb::get_dtb().get_property("/chosen", "stdout-path").unwrap();
+        let stdout = dtb::get_dtb()
+            .get_property("/chosen", "stdout-path")
+            .unwrap();
         let uart_addr = core::str::from_utf8(stdout)
             .unwrap()
             .trim_matches(char::from(0))
             .split_once('@')
-            .map(|(_, addr)| u32::from_str_radix(addr, 16).unwrap_or(SERIAL_PORT_ADDRESS))
-            .unwrap_or(SERIAL_PORT_ADDRESS);
+            .map(|(_, addr)| u32::from_str_radix(addr, 16).unwrap())
+            .unwrap();
+        // .map(|(_, addr)| u32::from_str_radix(addr, 16).unwrap_or(SERIAL_PORT_ADDRESS))
+        // .unwrap_or(SERIAL_PORT_ADDRESS);
         PL011Uart::new(uart_addr as usize)
     };
     pl011.init();

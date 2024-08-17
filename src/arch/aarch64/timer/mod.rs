@@ -11,7 +11,6 @@ pub fn init() {
     if !timer_compatible.contains("armv8-timer") {
         panic!("Compatible Timer (armv8-timer) Not Found");
     }
-    info!("Timer Compatible: {}", timer_compatible);
     let timer_interrupts = dtb::get_dtb().get_property("/timer", "interrupts").unwrap();
     const SPLIT_SIZE: usize = core::mem::size_of::<u32>();
 
@@ -26,7 +25,6 @@ pub fn init() {
         "NonSecure Timer",
     );
 
-    info!("Registering Timer.. ");
     timer_irq.register();
 
     enable_timer_irq(true);
@@ -63,15 +61,15 @@ pub fn set_timeout_irq_after(target: u64) {
     CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::SET + CNTP_CTL_EL0::IMASK::CLEAR);
 }
 
-pub fn print_timer_reg() {
-    info!("CNTP_CTL_EL0: {:#06x}", CNTP_CTL_EL0.get());
-    info!("  ISTATUS: {:?}", CNTP_CTL_EL0.read(CNTP_CTL_EL0::ISTATUS));
-    info!("  IMASK: {:?}", CNTP_CTL_EL0.read(CNTP_CTL_EL0::IMASK));
-    info!("  ENABLE: {:?}", CNTP_CTL_EL0.read(CNTP_CTL_EL0::ENABLE));
+pub fn print_timer_status() {
+    info!("      CNTP_CTL_EL0: {:#06x}", CNTP_CTL_EL0.get());
+    info!("      ISTATUS: {:?}", CNTP_CTL_EL0.read(CNTP_CTL_EL0::ISTATUS));
+    info!("      IMASK: {:?}", CNTP_CTL_EL0.read(CNTP_CTL_EL0::IMASK));
+    info!("      ENABLE: {:?}", CNTP_CTL_EL0.read(CNTP_CTL_EL0::ENABLE));
 
-    info!("CNTPCT_EL0: {:?}", CNTPCT_EL0.get());
-    info!("CNTP_TVAL_EL0: {:?}", CNTP_TVAL_EL0.get());
-    info!("CNTP_CVAL_EL0: {:?}", CNTP_CVAL_EL0.get());
+    info!("      CNTPCT_EL0: {:?}", CNTPCT_EL0.get());
+    info!("      CNTP_TVAL_EL0: {:?}", CNTP_TVAL_EL0.get());
+    info!("      CNTP_CVAL_EL0: {:?}", CNTP_CVAL_EL0.get());
 }
 
 struct CounterTimerValue(u64);

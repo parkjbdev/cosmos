@@ -5,6 +5,7 @@
 #![feature(const_refs_to_static)]
 // #![feature(core_intrinsics)]
 #![feature(exposed_provenance)]
+#![feature(fn_align)]
 #![feature(naked_functions)]
 #![feature(slice_as_chunks)]
 #![feature(strict_provenance)]
@@ -38,19 +39,23 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     arch::console::init();
 
     // Initialize Timer
-    info!(
-        "Timer Resolution: {}ns",
-        arch::timer::resolution().as_nanos()
-    );
     arch::timer::init();
-
     arch::irq::irq_enable();
+
 
     println!("       _________  _________ ___  ____  _____");
     println!("      / ___/ __ \\/ ___/ __ `__ \\/ __ \\/ ___/");
     println!("     / /__/ /_/ (__  ) / / / / / /_/ (__  ) ");
     println!("     \\___/\\____/____/_/ /_/ /_/\\____/____/  ");
     println!();
+
+
+    info!("Timer Status: ");
+    arch::timer::print_timer_status();
+    info!(
+        "Timer Resolution: {}ns",
+        arch::timer::resolution().as_nanos()
+    );
 
     info!("CPU Count: {} CPUs", arch::get_cpus());
 
@@ -59,42 +64,18 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // arch::test::exception::test_sgi();
     // info!("Test Pass");
 
-    info!("Initializing Memory Management");
+    info!("Current Page Size: {}", arch::mm::get_page_size());
+    info!("[TIP] You can change the PAGE_SIZE in kernel.ld");
 
-    info!("PAGE_SIZE: {}", arch::mm::get_page_size());
-    info!("Tip: You can change the PAGE_SIZE in kernel.ld");
+    info!("Initializing Memory...");
     arch::mm::init();
 
     // CPU & RAM Info
-    let (ram_start, ram_size) = arch::get_ramrange();
-    info!("RAM: start {:#x} size {:#x}", ram_start, ram_size);
+    info!("RAM Info: ");
+    arch::mm::print_ram_info();
 
-    // Memory Layout
     info!("Memory Layout: ");
-    info!(
-        "      {: <30}: [{:p} ~ {:p}]",
-        "Kernel",
-        &arch::kernel_start,
-        &arch::kernel_end
-    );
-    info!(
-        "      {: <30}: [{:p} ~ {:p}]",
-        ".text",
-        &arch::__text_start,
-        &arch::__text_end
-    );
-    info!(
-        "      {: <30}: [{:p} - {:p}]",
-        ".bss",
-        &arch::__bss_start,
-        &arch::__bss_end_exclusive
-    );
-    info!(
-        "      {: <30}: [{:p} ~ {:p}]",
-        "boot_core_stack_start",
-        &arch::__boot_core_stack_start,
-        &arch::__boot_core_stack_end_exclusive
-    );
+    arch::mm::print_memory_layout();
 
     info!("Current Exception Level: {}", get_current_el());
 
@@ -105,7 +86,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     arch::irq::print_interrupts();
 
     info!("Echoing Inputs");
-    info!("Waiting for interrupts");
+    info!("Waiting for interrupts...");
 
     let console = CONSOLE.get_mut().unwrap();
     console.clear_rx();
