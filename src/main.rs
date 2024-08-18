@@ -42,13 +42,13 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     arch::timer::init();
     arch::irq::irq_enable();
 
+    let ver = env!("CARGO_PKG_VERSION");
 
-    println!("       _________  _________ ___  ____  _____");
-    println!("      / ___/ __ \\/ ___/ __ `__ \\/ __ \\/ ___/");
-    println!("     / /__/ /_/ (__  ) / / / / / /_/ (__  ) ");
-    println!("     \\___/\\____/____/_/ /_/ /_/\\____/____/  ");
+    println!("     _________  _________ ___  ____  _____");
+    println!("    / ___/ __ \\/ ___/ __ `__ \\/ __ \\/ ___/");
+    println!("   / /__/ /_/ (__  ) / / / / / /_/ (__  ) ");
+    println!("   \\___/\\____/____/_/ /_/ /_/\\____/____/  v{}", ver);
     println!();
-
 
     info!("Timer Status: ");
     arch::timer::print_timer_status();
