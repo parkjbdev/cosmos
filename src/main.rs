@@ -1,14 +1,14 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 #![feature(alloc_error_handler)]
-#![feature(asm_const)]
-#![feature(const_refs_to_static)]
-// #![feature(core_intrinsics)]
 #![feature(exposed_provenance)]
 #![feature(fn_align)]
 #![feature(naked_functions)]
 #![feature(slice_as_chunks)]
 #![feature(strict_provenance)]
+// #![feature(asm_const)]
+// #![feature(const_refs_to_static)]
+// #![feature(core_intrinsics)]
 #![no_main]
 #![no_std]
 
@@ -17,14 +17,13 @@ pub mod print;
 pub mod arch;
 pub mod console;
 pub mod interrupt;
-pub mod mm;
+pub mod memory;
 pub mod sync;
 pub mod utils;
+pub mod driver;
 
 extern crate log as log_crate;
-use crate::arch::console::CONSOLE;
 use crate::arch::exception::el::get_current_el;
-use crate::console::interface::Read;
 use core::alloc::Layout;
 use log_crate::{error, info};
 
@@ -64,18 +63,18 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // arch::test::exception::test_sgi();
     // info!("Test Pass");
 
-    info!("Current Page Size: {}", arch::mm::get_page_size());
+    info!("Current Page Size: {}", arch::memory::get_page_size());
     info!("[TIP] You can change the PAGE_SIZE in kernel.ld");
 
     info!("Initializing Memory...");
-    arch::mm::init();
+    // arch::memory::mmu::init();
 
     // CPU & RAM Info
     info!("RAM Info: ");
-    arch::mm::print_ram_info();
+    arch::memory::print_ram_info();
 
+    arch::memory::print_memory_layout();
     info!("Memory Layout: ");
-    arch::mm::print_memory_layout();
 
     info!("Current Exception Level: {}", get_current_el());
 
@@ -88,7 +87,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     info!("Echoing Inputs");
     info!("Waiting for interrupts...");
 
-    let console = CONSOLE.get_mut().unwrap();
+    let console = console::console();
     console.clear_rx();
 
     loop {

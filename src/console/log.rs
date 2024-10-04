@@ -17,7 +17,6 @@ impl log::Log for Logger {
             let time = crate::arch::timer::uptime();
 
             println!("[ {:>3}.{:06}][{level}] {args}", time.as_secs(), time.subsec_micros());
-            // println!("[ {:>3}][{level}] {args}", time.as_secs());
         }
     }
 

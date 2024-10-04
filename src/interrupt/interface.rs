@@ -1,3 +1,3 @@
 pub trait IRQHandler {
-    fn handler(&mut self, cb: fn());
+    fn handler(&self, cb: fn());
 }

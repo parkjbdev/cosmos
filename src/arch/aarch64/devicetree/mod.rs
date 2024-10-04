@@ -1,6 +1,5 @@
-use crate::sync::spinlock::RawSpinlock;
+use crate::{arch::RAM_START, sync::spinlock::RawSpinlock};
 
-use super::constants::*;
 use generic_once_cell::OnceCell;
 use hermit_dtb::Dtb;
 
@@ -10,7 +9,7 @@ fn init_dtb() -> Result<(), Dtb<'static>> {
     DTB.set(unsafe { Dtb::from_raw(sptr::from_exposed_addr(RAM_START as usize)).unwrap() })
 }
 
-pub fn get_dtb<'a>() -> &'a Dtb<'a> {
+pub fn dtb<'a>() -> &'a Dtb<'a> {
     match DTB.get() {
         Some(dtb) => dtb,
         None => {

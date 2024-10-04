@@ -1,7 +1,6 @@
+pub(super) mod pl011;
+use crate::arch::devicetree;
 use core::{marker::PhantomData, ops};
-
-pub mod pl011;
-
 
 pub struct MMIODerefWrapper<T> {
     start_addr: usize,
@@ -25,4 +24,3 @@ impl<T> ops::Deref for MMIODerefWrapper<T> {
         unsafe { &*(self.start_addr as *const _) }
     }
 }
-

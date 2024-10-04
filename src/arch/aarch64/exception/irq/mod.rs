@@ -3,16 +3,15 @@ pub mod irq_type;
 use self::irq_type::InterruptType;
 use super::state::ExceptionState;
 use super::Handler;
-use crate::arch::dtb;
+use crate::arch::devicetree;
 use crate::sync::spinlock::{RawSpinlock, Spinlock};
 use aarch64_cpu::asm;
 use aarch64_cpu::registers::*;
 use arm_gic::gicv3::{GicV3, IntId, SgiTarget, Trigger};
-use tock_registers::interfaces::ReadWriteable;
-// pub use arm_gic::{irq_disable, irq_enable};
 use core::fmt::Display;
 use generic_once_cell::OnceCell;
 use log::info;
+use tock_registers::interfaces::ReadWriteable;
 
 const MAX_INTERRUPTS: usize = 1024;
 pub static INTERRUPTS: Spinlock<[Option<Interrupt>; MAX_INTERRUPTS]> =
@@ -32,14 +31,18 @@ where
 
 pub fn init_gic() -> Result<(), GicV3> {
     // Check Compatible GIC
-    let compat =
-        core::str::from_utf8(dtb::get_dtb().get_property("/intc", "compatible").unwrap()).unwrap();
+    let compat = core::str::from_utf8(
+        devicetree::dtb()
+            .get_property("/intc", "compatible")
+            .unwrap(),
+    )
+    .unwrap();
     if !compat.contains("arm,gic-v3") {
         panic!("Compatible GIC (arm,gic-v3) Not Found");
     }
 
-    // Parse GICD & GICC from the dtb /intc reg
-    let reg = dtb::get_dtb().get_property("/intc", "reg").unwrap();
+    // Parse GICD & GICC from the devicetree /intc reg
+    let reg = devicetree::dtb().get_property("/intc", "reg").unwrap();
 
     // GIC Distributor interface (GICD)
     let (slice, residual_slice) = reg.split_at(core::mem::size_of::<u64>());
@@ -81,23 +84,6 @@ pub struct Interrupt {
     name: &'static str,
     handler: Handler,
 }
-
-pub fn register_irq(irq_type: u32, id: u32, trigger: u32) {
-    let id = u32::from(match irq_type {
-        0 => IntId::spi(id),
-        1 => IntId::ppi(id),
-        _ => IntId::sgi(id),
-    });
-    let trigger = match trigger {
-        4 | 8 => Trigger::Level,
-        2 | 1 => Trigger::Edge,
-        // SGI is always edge triggered
-        _ => Trigger::Edge,
-        // _ => panic!("Invalid interrupt trigger type!"),
-    };
-}
-
-pub fn register_handler(id: u32, handler: fn()) {}
 
 impl Interrupt {
     pub fn from_raw(
