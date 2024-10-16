@@ -1,4 +1,4 @@
-use crate::utils::MemorySize;
+use crate::memory::types::memory::MemorySize;
 
 pub const SERIAL_PORT_ADDRESS: u32 = 0x09000000;
 pub const RAM_START: u64 = 0x40000000;

@@ -1,3 +1,5 @@
+pub mod symbols;
+
 use crate::{
     memory::{
         address_space::{AddressSpace, AssociatedTranslationTable},
@@ -22,53 +24,55 @@ pub fn kernel_tables() -> &'static NullLock<KernelTranslationTable> {
 }
 
 pub(crate) fn kernel_map_binary() -> Result<(), &'static str> {
-    kernel_map_at(
-        "Kernel .text Section",
-        virt_region,
-        phys_region,
-        &AttributeFields {
-            memory_attributes: MemoryAttributes::CacheableDRAM,
-            access_permissions: AccessPermissions::RO,
-        },
-    );
+    let text_size = unsafe { symbols::__text_end - symbols::__text_start };
+    
+    // kernel_map_at(
+    //     "Kernel .text Section",
+    //     virt_region,
+    //     phys_region,
+    //     &AttributeFields {
+    //         memory_attributes: MemoryAttributes::CacheableDRAM,
+    //         access_permissions: AccessPermissions::RO,
+    //     },
+    // );
 
-    kernel_map_at(
-        "Kernel .rodata Section",
-        virt_region,
-        phys_region,
-        &AttributeFields {
-            memory_attributes: MemoryAttributes::CacheableDRAM,
-            access_permissions: AccessPermissions::RO,
-        },
-    );
+    // kernel_map_at(
+    //     "Kernel .rodata Section",
+    //     virt_region,
+    //     phys_region,
+    //     &AttributeFields {
+    //         memory_attributes: MemoryAttributes::CacheableDRAM,
+    //         access_permissions: AccessPermissions::RO,
+    //     },
+    // );
 
-    kernel_map_at(
-        "Kernel .data Section",
-        virt_region,
-        phys_region,
-        &AttributeFields {
-            memory_attributes: MemoryAttributes::CacheableDRAM,
-            access_permissions: AccessPermissions::RW,
-        },
-    );
-    kernel_map_at(
-        "Kernel .bss Section",
-        virt_region,
-        phys_region,
-        &AttributeFields {
-            memory_attributes: MemoryAttributes::CacheableDRAM,
-            access_permissions: AccessPermissions::RW,
-        },
-    );
-    kernel_map_at(
-        "Kernel BootCore Stack",
-        virt_region,
-        phys_region,
-        &AttributeFields {
-            memory_attributes: MemoryAttributes::CacheableDRAM,
-            access_permissions: AccessPermissions::RW,
-        },
-    );
+    // kernel_map_at(
+    //     "Kernel .data Section",
+    //     virt_region,
+    //     phys_region,
+    //     &AttributeFields {
+    //         memory_attributes: MemoryAttributes::CacheableDRAM,
+    //         access_permissions: AccessPermissions::RW,
+    //     },
+    // );
+    // kernel_map_at(
+    //     "Kernel .bss Section",
+    //     virt_region,
+    //     phys_region,
+    //     &AttributeFields {
+    //         memory_attributes: MemoryAttributes::CacheableDRAM,
+    //         access_permissions: AccessPermissions::RW,
+    //     },
+    // );
+    // kernel_map_at(
+    //     "Kernel BootCore Stack",
+    //     virt_region,
+    //     phys_region,
+    //     &AttributeFields {
+    //         memory_attributes: MemoryAttributes::CacheableDRAM,
+    //         access_permissions: AccessPermissions::RW,
+    //     },
+    // );
 
     // TODO: set kernel map
     Ok(())

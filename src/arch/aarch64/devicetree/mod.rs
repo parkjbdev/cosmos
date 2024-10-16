@@ -1,4 +1,4 @@
-use crate::{arch::RAM_START, sync::spinlock::RawSpinlock};
+use crate::{bsp::memory::symbols::RAM_START, sync::spinlock::RawSpinlock};
 
 use generic_once_cell::OnceCell;
 use hermit_dtb::Dtb;

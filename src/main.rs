@@ -23,7 +23,6 @@ pub mod driver;
 pub mod interrupt;
 pub mod memory;
 pub mod sync;
-pub mod utils;
 
 extern crate log as log_crate;
 use crate::arch::exception::el::get_current_el;
@@ -52,7 +51,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     println!("   \\___/\\____/____/_/ /_/ /_/\\____/____/  v{}", ver);
     println!();
 
-    info!("Current Page Size: {}", arch::memory::get_page_size());
+    // info!("Current Page Size: {}", arch::memory::get_page_size());
     info!("[TIP] You can change the PAGE_SIZE in kernel.ld");
 
     let phys_kernel_tables_base_addr = match memory::translation_table::kernel_map_binary() {
@@ -83,11 +82,11 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // info!("Test Pass");
 
     // CPU & RAM Info
-    info!("RAM Info: ");
-    arch::memory::print_ram_info();
+    // info!("RAM Info: ");
+    // arch::memory::print_ram_info();
 
-    arch::memory::print_memory_layout();
-    info!("Memory Layout: ");
+    // info!("Memory Layout: ");
+    // arch::memory::print_memory_layout();
 
     info!("Current Exception Level: {}", get_current_el());
 

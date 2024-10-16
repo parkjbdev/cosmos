@@ -1,7 +1,7 @@
 pub mod descriptors;
 pub mod translation_table;
 
-use super::PAGE_SIZE;
+use crate::bsp::memory::symbols::PAGE_SIZE;
 use crate::memory::types::address::*;
 use crate::memory::{self, mmu::error::MMUEnableError};
 use aarch64_cpu::registers::ID_AA64MMFR0_EL1;

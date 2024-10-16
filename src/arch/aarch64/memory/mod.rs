@@ -4,8 +4,9 @@ use mmu::MMU;
 mod address_space;
 mod translation_granule;
 
-use super::PAGE_SIZE;
-use crate::{arch::devicetree, memory, utils::MemorySize};
+use crate::bsp::memory::symbols;
+use crate::memory::types::memory::MemorySize;
+use crate::{arch::devicetree, memory};
 use log::info;
 
 pub fn mmu() -> &'static impl memory::mmu::interface::MMU {
@@ -13,7 +14,7 @@ pub fn mmu() -> &'static impl memory::mmu::interface::MMU {
 }
 
 pub fn get_page_size() -> MemorySize {
-    unsafe { PAGE_SIZE }
+    unsafe { symbols::PAGE_SIZE }
 }
 
 pub fn get_ramrange() -> (u64, MemorySize) {
@@ -47,25 +48,25 @@ pub fn print_memory_layout() {
     info!(
         "      {: <30}: [{:p} ~ {:p}]",
         "Kernel",
-        unsafe { &super::constants::kernel_start },
-        unsafe { &super::constants::kernel_end }
+        unsafe { &symbols::kernel_start },
+        unsafe { &symbols::kernel_end }
     );
     info!(
         "      {: <30}: [{:p} ~ {:p}]",
         ".text",
-        unsafe { &super::constants::__text_start },
-        unsafe { &super::constants::__text_end },
+        unsafe { &symbols::__text_start },
+        unsafe { &symbols::__text_end },
     );
     info!(
         "      {: <30}: [{:p} - {:p}]",
         ".bss",
-        unsafe { &super::constants::__bss_start },
-        unsafe { &super::constants::__bss_end_exclusive }
+        unsafe { &symbols::__bss_start },
+        unsafe { &symbols::__bss_end_exclusive }
     );
     info!(
         "      {: <30}: [{:p} ~ {:p}]",
         "boot_core_stack_start",
-        unsafe { &super::constants::__boot_core_stack_start },
-        unsafe { &super::constants::__boot_core_stack_end_exclusive }
+        unsafe { &symbols::__boot_core_stack_start },
+        unsafe { &symbols::__boot_core_stack_end_exclusive }
     );
 }

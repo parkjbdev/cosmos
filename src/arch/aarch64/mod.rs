@@ -1,6 +1,5 @@
 pub mod devicetree;
 pub mod console;
-pub mod constants;
 pub mod drivers;
 pub mod exception;
 pub mod memory;
@@ -8,7 +7,6 @@ pub mod start;
 pub mod test;
 pub mod timer;
 
-pub use constants::*;
 pub use exception::irq;
 
 use aarch64_cpu::asm;
