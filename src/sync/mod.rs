@@ -7,7 +7,7 @@ pub mod interface {
         fn lock<'a, R>(&'a self, f: impl FnOnce(&'a mut Self::Data) -> R) -> R;
     }
 
-    pub trait ReadWriteEx {
+    pub trait RWLock {
         type Data;
         fn read<'a, R>(&'a self, f: impl FnOnce(&'a Self::Data) -> R) -> R;
         fn write<'a, R>(&'a self, f: impl FnOnce(&'a mut Self::Data) -> R) -> R;

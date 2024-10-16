@@ -1,11 +1,13 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
+#![allow(incomplete_features)]
 #![feature(alloc_error_handler)]
 #![feature(exposed_provenance)]
 #![feature(fn_align)]
 #![feature(naked_functions)]
 #![feature(slice_as_chunks)]
 #![feature(strict_provenance)]
+#![feature(generic_const_exprs)]
 // #![feature(asm_const)]
 // #![feature(const_refs_to_static)]
 // #![feature(core_intrinsics)]
@@ -15,12 +17,13 @@
 #[macro_use]
 pub mod print;
 pub mod arch;
+pub mod bsp;
 pub mod console;
+pub mod driver;
 pub mod interrupt;
 pub mod memory;
 pub mod sync;
 pub mod utils;
-pub mod driver;
 
 extern crate log as log_crate;
 use crate::arch::exception::el::get_current_el;
@@ -49,6 +52,22 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     println!("   \\___/\\____/____/_/ /_/ /_/\\____/____/  v{}", ver);
     println!();
 
+    info!("Current Page Size: {}", arch::memory::get_page_size());
+    info!("[TIP] You can change the PAGE_SIZE in kernel.ld");
+
+    let phys_kernel_tables_base_addr = match memory::translation_table::kernel_map_binary() {
+        Err(string) => panic!("Error mapping kernel binary: {}", string),
+        Ok(addr) => addr,
+    };
+
+    info!("Kernel binary mapped at: {}", phys_kernel_tables_base_addr);
+
+    if let Err(e) = memory::mmu::init(phys_kernel_tables_base_addr) {
+        panic!("Enabling MMU failed: {}", e);
+    }
+
+    memory::mmu::post_init();
+
     info!("Timer Status: ");
     arch::timer::print_timer_status();
     info!(
@@ -62,12 +81,6 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // arch::test::exception::test_segfault();
     // arch::test::exception::test_sgi();
     // info!("Test Pass");
-
-    info!("Current Page Size: {}", arch::memory::get_page_size());
-    info!("[TIP] You can change the PAGE_SIZE in kernel.ld");
-
-    info!("Initializing Memory...");
-    // arch::memory::mmu::init();
 
     // CPU & RAM Info
     info!("RAM Info: ");
