@@ -5,6 +5,10 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["qemu-virt"]
+qemu-virt=[]
+
 [dependencies]
 aarch64-cpu = { version = "9.x.x" }
 acpi = "5.0.0"
@@ -21,3 +25,8 @@ tock-registers = { version = "0.8.x", default-features = false, features = ["reg
 [dependencies.fdt-rs]
 version = "0.4"
 default-features = false
+
+[[bin]]
+name = "cosmos"
+test = false
+bench = false
