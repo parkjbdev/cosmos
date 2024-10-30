@@ -16,7 +16,7 @@ _start:
   b.ne .L_parking_loop
 
   ADR_REL x0, __bss_start
-  ADR_REL x1, __bss_end_exclusive
+  ADR_REL x1, __bss_end
   cmp x0, x1
   b.ne .L_bss_init_loop
 
@@ -42,7 +42,7 @@ _start:
 .L_prepare_kernel:
 	// This loads the physical address of the stack end. For details see
 	// https://github.com/rust-embedded/rust-raspberrypi-OS-tutorials/blob/master/16_virtual_mem_part4_higher_half_kernel/src/bsp/raspberrypi/link.ld
-  ADR_REL x0, __boot_core_stack_end_exclusive
+  ADR_REL x0, __boot_core_stack_end
 	mov		sp, x0
 
   // Setting Jiffies 

@@ -1,5 +1,5 @@
 use super::error::MMUEnableError;
-use crate::memory::types::address::*;
+use crate::memory::types::*;
 
 pub trait MMU {
     /// init should enable the MMU and caching

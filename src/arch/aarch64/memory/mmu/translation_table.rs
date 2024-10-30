@@ -1,11 +1,5 @@
 use super::descriptors::{PageDescriptor, TableDescriptor};
-use crate::{
-    arch::memory::translation_granule::Granule512MiB,
-    memory::{
-        self,
-        translation_table::interface::TranslationTable, types::address::{Address, Physical},
-    },
-};
+use crate::memory::{self, types::*};
 
 pub(super) trait StartAddr {
     fn phys_start_addr(&self) -> Address<Physical>;
@@ -13,7 +7,7 @@ pub(super) trait StartAddr {
 
 impl<T, const N: usize> StartAddr for [T; N] {
     fn phys_start_addr(&self) -> Address<Physical> {
-        Address::new(self as *const _ as u64)
+        Address::new(self as *const _ as usize)
     }
 }
 
@@ -25,7 +19,48 @@ pub struct FixedSizeTranslationTable<const NUM_ENTRIES: usize> {
     initialized: bool,
 }
 
-impl<const NUM_TABLES: usize> TranslationTable for FixedSizeTranslationTable<NUM_TABLES> {
+impl<const NUM_TABLES: usize> FixedSizeTranslationTable<NUM_TABLES> {
+    /// Helper to calculate the lvl2 and lvl3 indices from an address.
+    #[inline(always)]
+    fn lvl2_lvl3_index_from_page_addr(
+        &self,
+        virt_page_addr: PageAddress<Virtual>,
+    ) -> Result<(usize, usize), &'static str> {
+        let addr = virt_page_addr.value();
+        let lvl2_index = addr >> Granule512MB::SHIFT;
+        let lvl3_index = (addr & Granule512MB::MASK) >> Granule64KB::SHIFT;
+
+        if lvl2_index > (NUM_TABLES - 1) {
+            return Err("Virtual page is out of bounds of translation table");
+        }
+
+        Ok((lvl2_index, lvl3_index))
+    }
+
+    /// Sets the PageDescriptor corresponding to the supplied page address.
+    ///
+    /// Doesn't allow overriding an already valid page.
+    #[inline(always)]
+    fn set_page_descriptor_from_page_addr(
+        &mut self,
+        virt_page_addr: PageAddress<Virtual>,
+        new_desc: &PageDescriptor,
+    ) -> Result<(), &'static str> {
+        let (lvl2_index, lvl3_index) = self.lvl2_lvl3_index_from_page_addr(virt_page_addr)?;
+        let desc = &mut self.l3[lvl2_index][lvl3_index];
+
+        if desc.is_valid() {
+            return Err("Virtual page is already mapped");
+        }
+
+        *desc = *new_desc;
+        Ok(())
+    }
+}
+
+impl<const NUM_TABLES: usize> memory::translation_table::interface::TranslationTable
+    for FixedSizeTranslationTable<NUM_TABLES>
+{
     fn init(&mut self) {
         if self.initialized {
             return;
@@ -35,6 +70,30 @@ impl<const NUM_TABLES: usize> TranslationTable for FixedSizeTranslationTable<NUM
     }
     fn phys_base_addr(&self) -> Address<Physical> {
         self.l2.phys_start_addr()
+    }
+
+    fn map_at(
+        &mut self,
+        virt_region: &MemoryRegion<Virtual>,
+        phys_region: &MemoryRegion<Physical>,
+        attributes: &AttributeFields,
+    ) -> Result<(), &'static str> {
+        if !self.initialized {
+            return Err("Translation table is not initialized");
+        }
+
+        if virt_region.size() != phys_region.size() {
+            return Err("Tried to map memory regions with unequal sizes");
+        }
+
+        let iter = phys_region.into_iter().zip(virt_region.into_iter());
+        for (phys_page_addr, virt_page_addr) in iter {
+            let new_desc = PageDescriptor::from_output_page_addr(phys_page_addr, attributes);
+            let virt_page = virt_page_addr;
+            self.set_page_descriptor_from_page_addr(virt_page, &new_desc)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -60,7 +119,7 @@ impl<const NUM_TABLES: usize> FixedSizeTranslationTable<NUM_TABLES> {
 impl<const SIZE: usize> memory::address_space::AssociatedTranslationTable
     for memory::address_space::AddressSpace<SIZE>
 where
-    [u8; Self::SIZE >> Granule512MiB::SHIFT]: Sized,
+    [u8; Self::SIZE >> Granule512MB::SHIFT]: Sized,
 {
-    type TableStartFromBottom = FixedSizeTranslationTable<{ Self::SIZE >> Granule512MiB::SHIFT }>;
+    type TableStartFromBottom = FixedSizeTranslationTable<{ Self::SIZE >> Granule512MB::SHIFT }>;
 }

@@ -2,7 +2,7 @@ pub mod descriptors;
 pub mod translation_table;
 
 use crate::bsp::memory::symbols::PAGE_SIZE;
-use crate::memory::types::address::*;
+use crate::memory::types::*;
 use crate::memory::{self, mmu::error::MMUEnableError};
 use aarch64_cpu::registers::ID_AA64MMFR0_EL1;
 use aarch64_cpu::{asm::barrier, registers::*};
@@ -16,15 +16,15 @@ impl memory::mmu::interface::MMU for MemoryManagementUnit {
         if self.is_enabled() {
             return Err(MMUEnableError::AlreadyEnabled);
         }
-        let page_size = unsafe { PAGE_SIZE };
+        let page_size = unsafe { PAGE_SIZE.get() } as usize;
 
-        if !ID_AA64MMFR0_EL1.matches_all(match page_size.0 {
+        if !ID_AA64MMFR0_EL1.matches_all(match page_size {
             65536 => ID_AA64MMFR0_EL1::TGran64::Supported,
             16384 => ID_AA64MMFR0_EL1::TGran16::Supported,
             4096 => ID_AA64MMFR0_EL1::TGran4::Supported,
-            _ => return Err(MMUEnableError::InvalidGranuleSize(page_size.0)),
+            _ => return Err(MMUEnableError::InvalidGranuleSize(page_size)),
         }) {
-            return Err(MMUEnableError::GranuleNotSupported(page_size.0));
+            return Err(MMUEnableError::GranuleNotSupported(page_size));
         }
 
         info!("ID_AA64MMFR0_EL1: {:#b}", ID_AA64MMFR0_EL1.get());
@@ -60,7 +60,7 @@ impl memory::mmu::interface::MMU for MemoryManagementUnit {
         );
 
         // Set Kernel Table physical base address to TTBR0_EL1
-        TTBR0_EL1.set_baddr(phys_table_baddr.value());
+        TTBR0_EL1.set_baddr(phys_table_baddr.value() as u64);
 
         // Configure Translation Control
         // Configure various settings of stage 1 of the EL1 translation regime.
@@ -97,3 +97,15 @@ impl memory::mmu::interface::MMU for MemoryManagementUnit {
 }
 
 pub(super) static MMU: MemoryManagementUnit = MemoryManagementUnit;
+
+impl<const AS_SIZE: usize> memory::address_space::AddressSpace<AS_SIZE> {
+    /// Checks for architectural restrictions.
+    pub const fn arch_address_space_size_sanity_checks() {
+        // Size must be at least one full 512 MiB table.
+        assert!((AS_SIZE % Granule512MB::SIZE) == 0);
+
+        // Check for 48 bit virtual address size as maximum, which is supported by any ARMv8
+        // version.
+        assert!(AS_SIZE <= (1 << 48));
+    }
+}

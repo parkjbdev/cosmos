@@ -1,11 +1,9 @@
 pub mod mmu;
+pub mod attribute;
 use mmu::MMU;
 
-mod address_space;
-mod translation_granule;
-
 use crate::bsp::memory::symbols;
-use crate::memory::types::memory::MemorySize;
+use crate::memory::types::MemorySize;
 use crate::{arch::devicetree, memory};
 use log::info;
 
@@ -14,7 +12,7 @@ pub fn mmu() -> &'static impl memory::mmu::interface::MMU {
 }
 
 pub fn get_page_size() -> MemorySize {
-    unsafe { symbols::PAGE_SIZE }
+    MemorySize(unsafe { symbols::PAGE_SIZE.get() as usize })
 }
 
 pub fn get_ramrange() -> (u64, MemorySize) {
@@ -41,32 +39,4 @@ pub fn print_ram_info() {
     let (ram_start, ram_size) = get_ramrange();
     info!("      Start Address {:#x}", ram_start);
     info!("      Size {}", ram_size);
-}
-
-pub fn print_memory_layout() {
-    // Memory Layout
-    info!(
-        "      {: <30}: [{:p} ~ {:p}]",
-        "Kernel",
-        unsafe { &symbols::kernel_start },
-        unsafe { &symbols::kernel_end }
-    );
-    info!(
-        "      {: <30}: [{:p} ~ {:p}]",
-        ".text",
-        unsafe { &symbols::__text_start },
-        unsafe { &symbols::__text_end },
-    );
-    info!(
-        "      {: <30}: [{:p} - {:p}]",
-        ".bss",
-        unsafe { &symbols::__bss_start },
-        unsafe { &symbols::__bss_end_exclusive }
-    );
-    info!(
-        "      {: <30}: [{:p} ~ {:p}]",
-        "boot_core_stack_start",
-        unsafe { &symbols::__boot_core_stack_start },
-        unsafe { &symbols::__boot_core_stack_end_exclusive }
-    );
 }

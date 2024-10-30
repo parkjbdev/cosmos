@@ -1,11 +1,12 @@
 OUTPUT_FORMAT("elf64-littleaarch64")
 OUTPUT_ARCH("aarch64")
 
-__PAGE_SIZE = 64K;
-PAGE_MASK = __PAGE_SIZE - 1;
+PAGE_SIZE = 64K;
+PAGE_MASK = PAGE_SIZE - 1;
 
 ENTRY(_start)
-kernel_start = 0x40200000;
+/* Qemu Device Tree Blob is 1MB */
+kernel_start = 0x40100000;
 
 PHDRS
 {
@@ -17,47 +18,52 @@ PHDRS
 SECTIONS
 {
   . = kernel_start;
-
+  . = ALIGN(PAGE_SIZE);
+  __text_start = .;
   .text : ALIGN(8) {
-    __text_start = .;
     KEEP(*(.text._start))
     *(.text._start_cosmos)
     *(.text*)
     . = ALIGN(8);
-    __text_end = .;
   } :segment_rx
+  . = ALIGN(PAGE_SIZE);
+  __text_end = .;
 
+  __rodata_start = .;
   .rodata : ALIGN(8) {
-    __rodata_start = .;
-    PAGE_SIZE = .;
-    QUAD(__PAGE_SIZE);
     *(.rodata)
     *(.rodata.*)
-    __rodata_end = .;
   } :segment_ro
+  . = ALIGN(PAGE_SIZE);
+  __rodata_end = .;
 
-  . = ALIGN(__PAGE_SIZE);
+  /***********************************************************************************************
+  * Data and BSS
+  * **********************************************************************************************/
 
+  __data_start = .;
   .data   : ALIGN(8) {
     *(.data)
     *(.data.*)
   } :segment_rw
+  . = ALIGN(PAGE_SIZE);
+  __data_end = .;
 
+  __bss_start = .;
   .bss (NOLOAD)    : ALIGN(16) {
-    __bss_start = .;
     *(.bss)
     *(.bss.*)
     . = ALIGN(16);
-    __bss_end_exclusive = .;
   } :segment_rw
+  . = ALIGN(PAGE_SIZE);
+  __bss_end = .;
 
   .got    : ALIGN(8) {
        /* Global offset table Todo */
     *(.got)
   } :segment_ro
   ASSERT(SIZEOF(.got) == 0, "Relocation Not Supported")
-
-  . = ALIGN(4K); /* Align to page boundary */
+  . = ALIGN(PAGE_SIZE);
 
   /***********************************************************************************************
    * Boot Core Stack
@@ -66,6 +72,7 @@ SECTIONS
                                        /*   | stack       */
   . += 16K;                            /*   | growth      */
                                        /*   | direction   */
-  __boot_core_stack_end_exclusive = .; /*   |             */
+  . = ALIGN(PAGE_SIZE);                /*   |             */
+  __boot_core_stack_end = .;           /*   |             */
   kernel_end = .;
 }

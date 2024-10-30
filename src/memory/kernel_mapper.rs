@@ -1,18 +1,6 @@
-use interface::TranslationTable;
-
-use crate::memory::types::address::*;
+use super::translation_table::interface::TranslationTable;
+use crate::memory::types::*;
 use crate::{bsp, sync::interface::Mutex};
-
-use super::types::memory::{AttributeFields, MemoryRegion};
-
-pub mod interface {
-    use super::*;
-
-    pub trait TranslationTable {
-        fn init(&mut self);
-        fn phys_base_addr(&self) -> Address<Physical>;
-    }
-}
 
 pub fn kernel_map_binary() -> Result<Address<Physical>, &'static str> {
     let phys_kernel_tables_baddr = bsp::memory::kernel_tables().lock(|table| {
@@ -31,4 +19,5 @@ pub fn kernel_map_at(
     phys_region: &MemoryRegion<Physical>,
     attributes: &AttributeFields,
 ) {
+    bsp::memory::kernel_tables().lock(|tables| tables.map_at(virt_region, phys_region, attributes));
 }

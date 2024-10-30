@@ -8,9 +8,7 @@
 #![feature(slice_as_chunks)]
 #![feature(strict_provenance)]
 #![feature(generic_const_exprs)]
-// #![feature(asm_const)]
-// #![feature(const_refs_to_static)]
-// #![feature(core_intrinsics)]
+#![feature(step_trait)]
 #![no_main]
 #![no_std]
 
@@ -51,10 +49,13 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     println!("   \\___/\\____/____/_/ /_/ /_/\\____/____/  v{}", ver);
     println!();
 
-    // info!("Current Page Size: {}", arch::memory::get_page_size());
-    info!("[TIP] You can change the PAGE_SIZE in kernel.ld");
+    // CPU & RAM Info
+    info!("RAM Info: ");
+    arch::memory::print_ram_info();
 
-    let phys_kernel_tables_base_addr = match memory::translation_table::kernel_map_binary() {
+    info!("Current Page Size: {}", arch::memory::get_page_size());
+
+    let phys_kernel_tables_base_addr = match memory::kernel_mapper::kernel_map_binary() {
         Err(string) => panic!("Error mapping kernel binary: {}", string),
         Ok(addr) => addr,
     };
@@ -80,13 +81,6 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // arch::test::exception::test_segfault();
     // arch::test::exception::test_sgi();
     // info!("Test Pass");
-
-    // CPU & RAM Info
-    // info!("RAM Info: ");
-    // arch::memory::print_ram_info();
-
-    // info!("Memory Layout: ");
-    // arch::memory::print_memory_layout();
 
     info!("Current Exception Level: {}", get_current_el());
 

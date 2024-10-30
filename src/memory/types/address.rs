@@ -14,18 +14,18 @@ impl AddressType for Virtual {}
 
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct Address<T: AddressType> {
-    value: u64,
+    value: usize,
     _marker: PhantomData<T>,
 }
 
 impl<T: AddressType> Address<T> {
-    pub fn new(value: u64) -> Self {
+    pub fn new(value: usize) -> Self {
         Self {
             value,
             _marker: PhantomData,
         }
     }
-    pub fn value(&self) -> u64 {
+    pub fn value(&self) -> usize {
         self.value
     }
 }
