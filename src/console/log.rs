@@ -1,3 +1,4 @@
+use crate::println;
 use log::{Level, LevelFilter, Metadata, Record};
 
 struct Logger;
@@ -16,7 +17,11 @@ impl log::Log for Logger {
             let args = record.args();
             let time = crate::arch::timer::uptime();
 
-            println!("[ {:>3}.{:06}][{level}] {args}", time.as_secs(), time.subsec_micros());
+            println!(
+                "[ {:>3}.{:06}][{level}] {args}",
+                time.as_secs(),
+                time.subsec_micros()
+            );
         }
     }
 

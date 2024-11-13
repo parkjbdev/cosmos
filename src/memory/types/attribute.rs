@@ -1,5 +1,3 @@
-use core::ops::BitAnd;
-
 #[derive(Copy, Clone, Debug, Eq, PartialOrd, PartialEq)]
 pub struct AttributeFields {
     pub memory_attributes: MemoryAttributes,

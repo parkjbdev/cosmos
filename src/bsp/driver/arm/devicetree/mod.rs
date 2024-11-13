@@ -1,24 +1,28 @@
-use crate::{bsp::memory::symbols::DEVICE_TREE_START, driver, sync::spinlock::RawSpinlock};
-use generic_once_cell::OnceCell;
-use hermit_dtb::Dtb;
+use hermit_dtb::{Dtb, EnumSubnodesIter};
 
-pub const DEVICE_TREE: OnceCell<RawSpinlock, Dtb> = OnceCell::new();
+use spin::Mutex;
 
-pub struct DeviceTreeDriver;
+pub static DEVICE_TREE: Mutex<Option<Dtb>> = Mutex::new(None);
 
-impl driver::interface::DeviceDriver for DeviceTreeDriver {
-    fn init(&mut self) -> Result<(), &'static str> {
-        DEVICE_TREE.set(unsafe {
-            Dtb::from_raw(sptr::from_exposed_addr(DEVICE_TREE_START as usize)).unwrap()
-        });
-        Ok(())
-    }
+pub fn init(base: u32) {
+    let mut device_tree = DEVICE_TREE.lock();
+    *device_tree = Some(unsafe { Dtb::from_raw(sptr::from_exposed_addr(base as usize)).unwrap() });
+}
 
-    fn compatible(&self) -> &str {
-        "Device Tree"
-    }
+pub fn update_base_address(new_base: u32) {
+    let mut device_tree = DEVICE_TREE.lock();
+    *device_tree =
+        Some(unsafe { Dtb::from_raw(sptr::from_exposed_addr(new_base as usize)).unwrap() });
+}
 
-    // DTB does not have IRQ handler
-    fn register_from_devicetree_and_enable_irq_handler(&self) {}
-    fn register_and_enable_irq_handler(&self, interrupt: crate::arch::irq::Interrupt) {}
+pub fn get_property<'a>(path: &'a str, property: &'a str) -> Option<&'a [u8]> {
+    DEVICE_TREE
+        .lock()
+        .as_ref()
+        .unwrap()
+        .get_property(path, property)
+}
+
+pub fn enum_subnodes(path: &str) -> EnumSubnodesIter {
+    DEVICE_TREE.lock().as_ref().unwrap().enum_subnodes(path)
 }

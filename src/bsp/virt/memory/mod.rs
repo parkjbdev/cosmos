@@ -43,10 +43,15 @@ pub(crate) fn kernel_map_binary() -> Result<(), &'static str> {
     let virt_region = virtual_region_of(0, 0x4010_0000);
     let phys_region = physical_region_of(virt_region);
     info!("      {: <15}: [{:#x} ~ {:#x}]", "mmio", 0, 0x4010_0000);
-    kernel_map_at("MMIO", &virt_region, &phys_region, &AttributeFields {
-        access_permissions: AccessPermissions::RO,
-        memory_attributes: MemoryAttributes::Device,
-    });
+    kernel_map_at(
+        "MMIO",
+        &virt_region,
+        &phys_region,
+        &AttributeFields {
+            access_permissions: AccessPermissions::RO,
+            memory_attributes: MemoryAttributes::Device,
+        },
+    );
 
     let (start_addr, end_addr) = self::symbols::text();
     let virt_region = virtual_region_of(start_addr, end_addr);

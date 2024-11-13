@@ -1,78 +1,158 @@
-use generic_once_cell::OnceCell;
-use pl011::PL011Uart;
-
-use crate::{arch::irq::Interrupt, driver, sync::spinlock::RawSpinlock};
-
-use super::devicetree::DEVICE_TREE;
-
-mod pl011;
-mod pl011_inner;
 mod registers;
 
-pub const PL011_UART: OnceCell<RawSpinlock, PL011Uart> = OnceCell::new();
+use crate::{
+    arch::irq::Interrupt,
+    bsp::devicetree,
+    driver,
+    interrupt::{self, interface::IRQHandler},
+};
+use aarch64_cpu::asm;
+use core::fmt;
+use registers::*;
+use spin::Mutex;
+use tock_registers::interfaces::{Readable, Writeable};
 
-pub struct PL011UartDriver;
+pub static CONSOLE: Mutex<Option<PL011Uart>> = Mutex::new(None);
 
-impl driver::interface::DeviceDriver for PL011UartDriver {
+pub fn init(base: u32) {
+    let mut console = CONSOLE.lock();
+    *console = Some(PL011Uart::new(base));
+}
+
+pub fn init_irq() {
+    // Interrupt
+    let pl011_dt = devicetree::get_property("/pl011", "interrupts").unwrap();
+
+    const SPLIT_SIZE: usize = core::mem::size_of::<u32>();
+    let chunks: &[[u8; SPLIT_SIZE]] = unsafe { pl011_dt.as_chunks_unchecked() };
+
+    Interrupt::from_raw(
+        u32::from_be_bytes(chunks[0]),
+        u32::from_be_bytes(chunks[1]),
+        u32::from_be_bytes(chunks[2]),
+        0x00,
+        |state| {
+            CONSOLE.lock().as_mut().unwrap().handler(|| {
+                CONSOLE.lock().as_mut().unwrap().echo();
+            });
+            true
+        },
+        "Keyboard Interrupt",
+    )
+    .register();
+}
+
+pub fn update_base_address(new_base: u32) {
+    let mut console = CONSOLE.lock();
+    if let Some(ref mut uart) = *console {
+        uart.update_base(new_base); // Assuming a method to update the base address
+    } else {
+        *console = Some(PL011Uart::new(new_base));
+    }
+}
+
+pub struct PL011Uart {
+    pub registers: Registers,
+}
+
+impl PL011Uart {
+    pub(super) const fn new(base: u32) -> Self {
+        Self {
+            registers: unsafe { Registers::new(base as usize) },
+        }
+    }
+
+    pub fn update_base(&mut self, base: u32) {
+        self.registers = unsafe { Registers::new(base as usize) };
+    }
+
+    pub(super) fn flush(&self) {
+        while self.registers.FR.matches_all(FR::BUSY::SET) {
+            asm::nop();
+        }
+    }
+
+    pub(super) fn write_char(&mut self, c: char) {
+        self.flush();
+        self.registers.DR.set(c as u32);
+    }
+
+    pub(super) fn read_char(&mut self, nonblocking: bool) -> Option<char> {
+        if nonblocking && self.registers.FR.matches_all(FR::RXFE::SET) {
+            return None;
+        }
+
+        while self.registers.FR.matches_all(FR::RXFE::SET) {
+            asm::nop();
+        }
+
+        let mut c = self.registers.DR.get() as u8 as char;
+        if c == '\r' {
+            c = '\n';
+        }
+
+        Some(c)
+    }
+
+    pub(super) fn echo(&mut self) {
+        while let Some(c) = self.read_char(true) {
+            self.write_char(c)
+        }
+    }
+}
+
+impl driver::interface::DeviceDriver for PL011Uart {
     fn init(&mut self) -> Result<(), &'static str> {
-        let uart_addr = {
-            let stdout = DEVICE_TREE
-                .get()
-                .unwrap()
-                .get_property("/chosen", "stdout-path")
-                .unwrap();
-            core::str::from_utf8(stdout)
-                .unwrap()
-                .trim_matches(char::from(0))
-                .split_once('@')
-                .map(|(_, addr)| u32::from_str_radix(addr, 16).unwrap())
-                .unwrap()
-        };
+        self.flush();
 
-        let mut pl011 = PL011Uart::new(uart_addr);
+        // Clear
+        self.registers.CR.set(0);
+        self.registers.ICR.write(ICR::ALL::CLEAR);
 
-        pl011.init();
-        PL011_UART.set(pl011);
+        // Set baud rate
+        self.registers.IBRD.write(IBRD::BAUD_DIVINT.val(3));
+        self.registers.FBRD.write(FBRD::BAUD_DIVFRAC.val(16));
+
+        // Set Data Frame
+        self.registers
+            .LCR_H
+            .write(LCR_H::WLEN::EightBit + LCR_H::FEN::FifosEnabled);
+
+        // Set RX FIFO fill level at 1/8.
+        self.registers.IFLS.write(IFLS::RXIFLSEL::OneEigth);
+
+        // Enable RX IRQ + RX timeout IRQ.
+        self.registers
+            .IMSC
+            .write(IMSC::RXIM::Enabled + IMSC::RTIM::Enabled);
+
+        // Set Control Register
+        // Enable UART, RX, TX
+        self.registers
+            .CR
+            .write(CR::UARTEN::Enabled + CR::TXE::Enabled + CR::RXE::Enabled);
 
         Ok(())
     }
+}
 
-    fn compatible(&self) -> &str {
-        core::str::from_utf8(
-            DEVICE_TREE
-                .get()
-                .unwrap()
-                .get_property("/pl011", "compatible")
-                .unwrap(),
-        )
-        .unwrap()
-        // "arm,pl011", "arm,primecell"
+impl fmt::Write for PL011Uart {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for c in s.chars() {
+            self.write_char(c);
+        }
+
+        Ok(())
     }
+}
 
-    fn register_from_devicetree_and_enable_irq_handler(&self) {
-        // Interrupt
-        let pl011_dt = DEVICE_TREE
-            .get()
-            .unwrap()
-            .get_property("/pl011", "interrupts")
-            .unwrap();
-
-        const SPLIT_SIZE: usize = core::mem::size_of::<u32>();
-        let chunks: &[[u8; SPLIT_SIZE]] = unsafe { pl011_dt.as_chunks_unchecked() };
-
-        Interrupt::from_raw(
-            u32::from_be_bytes(chunks[0]),
-            u32::from_be_bytes(chunks[1]),
-            u32::from_be_bytes(chunks[2]),
-            0x00,
-            |state| {
-                // console().handler(|| {
-                //     console().echo();
-                // });
-                true
-            },
-            "Keyboard Interrupt",
-        )
-        .register();
+impl interrupt::interface::IRQHandler for PL011Uart {
+    fn handler(&mut self, cb: fn()) {
+        let pending = self.registers.MIS.extract();
+        self.registers.ICR.write(ICR::ALL::CLEAR);
+        if pending.matches_any(MIS::RXMIS::SET + MIS::RTMIS::SET) {
+            println!("Interrupt from PL011 UART");
+            cb();
+        }
     }
 }

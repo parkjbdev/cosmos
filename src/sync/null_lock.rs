@@ -65,4 +65,3 @@ impl<T> super::interface::Mutex for IRQSafeNullLock<T> {
         irq::exec_with_irq_disabled(|| f(data))
     }
 }
-

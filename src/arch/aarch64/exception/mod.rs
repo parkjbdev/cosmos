@@ -14,8 +14,6 @@ global_asm!(include_str!("vector_table.s"));
 type Handler = fn(state: &ExceptionState) -> bool;
 
 pub fn init_exception_vector() {
-    // TODO: Assert interrupts are disabled
-
     // Set Exception Vector Table
     extern "Rust" {
         static __exception_vector: UnsafeCell<()>;

@@ -9,18 +9,22 @@
 #![feature(strict_provenance)]
 #![feature(generic_const_exprs)]
 #![feature(step_trait)]
+#![allow(internal_features)]
+#![feature(ptr_internals)]
 #![no_main]
 #![no_std]
 
+pub mod sync;
+
 #[macro_use]
 pub mod print;
+
 pub mod arch;
 pub mod bsp;
 pub mod console;
 pub mod driver;
 pub mod interrupt;
 pub mod memory;
-pub mod sync;
 
 extern crate log as log_crate;
 use crate::arch::exception::el::get_current_el;
@@ -61,13 +65,13 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
         Ok(addr) => addr,
     };
 
-    info!("Kernel binary mapped at: {}", phys_kernel_tables_base_addr);
+    // info!("Kernel binary mapped at: {}", phys_kernel_tables_base_addr);
 
-    if let Err(e) = memory::mmu::init(phys_kernel_tables_base_addr) {
-        panic!("Enabling MMU failed: {}", e);
-    }
+    // if let Err(e) = memory::mmu::init(phys_kernel_tables_base_addr) {
+    //     panic!("Enabling MMU failed: {}", e);
+    // }
 
-    memory::mmu::post_init();
+    // memory::mmu::post_init();
 
     info!("Timer Status: ");
     arch::timer::print_timer_status();
@@ -94,8 +98,8 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     info!("Echoing Inputs");
     info!("Waiting for interrupts...");
 
-    let console = console::console();
-    console.clear_rx();
+    // let console = console::console();
+    // console.clear_rx();
 
     loop {
         arch::halt();

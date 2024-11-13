@@ -1,5 +1,5 @@
-pub mod spinlock;
 pub mod null_lock;
+pub mod spinlock;
 
 pub mod interface {
     pub trait Mutex {

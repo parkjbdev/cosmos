@@ -2,7 +2,7 @@ use core::fmt::{Display, Formatter, Result};
 
 #[derive(Debug)]
 #[repr(C)]
-pub(crate) struct ExceptionState {
+pub struct ExceptionState {
     // General Purpose Registers (x0-x29)
     gpr: [u64; 30],
 

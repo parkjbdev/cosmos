@@ -12,5 +12,5 @@ impl<const GRANULE_SIZE: usize> TranslationGranule<GRANULE_SIZE> {
     }
 }
 
-pub type Granule512MB = TranslationGranule<{512 * 1024 * 1024}>;
-pub type Granule64KB = TranslationGranule<{64 * 1024}>;
+pub type Granule512MB = TranslationGranule<{ 512 * 1024 * 1024 }>;
+pub type Granule64KB = TranslationGranule<{ 64 * 1024 }>;

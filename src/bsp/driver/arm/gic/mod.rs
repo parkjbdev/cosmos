@@ -1,9 +1,6 @@
-use super::devicetree::DEVICE_TREE;
-use crate::{driver, sync::spinlock::RawSpinlock};
+use super::devicetree;
+use crate::{arch::irq::GIC, driver};
 use arm_gic::gicv3::GicV3;
-use generic_once_cell::OnceCell;
-
-pub const GIC: OnceCell<RawSpinlock, GicV3> = OnceCell::new();
 
 pub struct GicDriver;
 
@@ -15,11 +12,7 @@ impl driver::interface::DeviceDriver for GicDriver {
         }
 
         // Parse GICD & GICC from the devicetree /intc reg
-        let reg = DEVICE_TREE
-            .get()
-            .unwrap()
-            .get_property("/intc", "reg")
-            .unwrap();
+        let reg = devicetree::get_property("/intc", "reg").unwrap();
 
         // GIC Distributor interface (GICD)
         let (slice, residual_slice) = reg.split_at(core::mem::size_of::<u64>());
@@ -41,20 +34,14 @@ impl driver::interface::DeviceDriver for GicDriver {
         GicV3::set_priority_mask(0xff);
         gic.setup();
 
-        GIC.set(gic);
+        let result = unsafe { GIC.set(gic) };
 
         Ok(())
     }
 
     fn compatible(&self) -> &str {
-        core::str::from_utf8(
-            DEVICE_TREE
-                .get()
-                .unwrap()
-                .get_property("/intc", "compatible")
-                .unwrap(),
-        )
-        .unwrap()
+        core::str::from_utf8(devicetree::get_property("/intc", "compatible").unwrap()).unwrap()
+        // "arm,gic-v3"
     }
 
     // GIC itself does not have IRQ handler

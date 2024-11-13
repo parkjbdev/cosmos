@@ -1,6 +1,6 @@
 use crate::{
     arch::{exception::state::ExceptionState, irq::Interrupt},
-    bsp::devicetree::DEVICE_TREE,
+    bsp::devicetree,
     driver,
 };
 use aarch64_cpu::registers::*;
@@ -19,23 +19,12 @@ impl driver::interface::DeviceDriver for TimerDriver {
     }
 
     fn compatible(&self) -> &str {
-        core::str::from_utf8(
-            DEVICE_TREE
-                .get()
-                .unwrap()
-                .get_property("/timer", "compatible")
-                .unwrap(),
-        )
-        .unwrap()
         // "arm,armv8-timer", "arm,armv7-timer"
+        core::str::from_utf8(devicetree::get_property("/timer", "compatible").unwrap()).unwrap()
     }
 
     fn register_from_devicetree_and_enable_irq_handler(&self) {
-        let timer_interrupts = DEVICE_TREE
-            .get()
-            .unwrap()
-            .get_property("/timer", "interrupts")
-            .unwrap();
+        let timer_interrupts = devicetree::get_property("/timer", "interrupts").unwrap();
 
         const SPLIT_SIZE: usize = core::mem::size_of::<u32>();
 

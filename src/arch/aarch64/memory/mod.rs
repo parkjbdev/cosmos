@@ -2,9 +2,8 @@ pub mod attribute;
 pub mod mmu;
 use mmu::MMU;
 
-use crate::bsp::devicetree::{DeviceTreeDriver, DEVICE_TREE};
-use crate::bsp::memory::symbols;
-use crate::driver::interface::DeviceDriver;
+use crate::bsp::devicetree;
+use crate::bsp::virt::memory::symbols;
 use crate::memory;
 use crate::memory::types::MemorySize;
 use log::info;
@@ -18,11 +17,7 @@ pub fn get_page_size() -> MemorySize {
 }
 
 pub fn get_ramrange() -> (u64, MemorySize) {
-    let mem_devt = DEVICE_TREE 
-        .get()
-        .unwrap()
-        .get_property("/memory", "device_type")
-        .unwrap();
+    let mem_devt = devicetree::get_property("/memory", "device_type").unwrap();
 
     assert!(
         core::str::from_utf8(mem_devt)
@@ -31,11 +26,7 @@ pub fn get_ramrange() -> (u64, MemorySize) {
             == "memory"
     );
 
-    let mem_reg = DEVICE_TREE
-        .get()
-        .unwrap()
-        .get_property("/memory", "reg")
-        .unwrap();
+    let mem_reg = devicetree::get_property("/memory", "reg").unwrap();
     let (start, size) = mem_reg.split_at(core::mem::size_of::<u64>());
     let ram_start = u64::from_be_bytes(start.try_into().unwrap());
     let ram_size = usize::from_be_bytes(size.try_into().unwrap());

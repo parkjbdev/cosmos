@@ -6,20 +6,22 @@ pub mod pl011;
 pub mod timer;
 
 pub fn init_drivers() {
-    // 순서 변경금지
-    // 1. DTB
-    // 2. GOC
-    // 3. PL011
-    // 그 이후 무관
+    devicetree::init(0x40000000);
 
-    devicetree::DeviceTreeDriver.init();
     gic::GicDriver.init();
-    pl011::PL011UartDriver.init();
 
-    // pl011::PL011UartDriver.init();
-    // pl011::PL011UartDriver::init();
-    // pl011::PL011UartDriver.init();
-    // pl011::PL011Driver.register_from_devicetree_and_enable_irq_handler();
-    // pl011::PL011Driver.register_and_enable_irq_handler();
+    let uart_addr = {
+        let stdout = devicetree::get_property("/chosen", "stdout-path").unwrap();
+        core::str::from_utf8(stdout)
+            .unwrap()
+            .trim_matches(char::from(0))
+            .split_once('@')
+            .map(|(_, addr)| u32::from_str_radix(addr, 16).unwrap())
+            .unwrap()
+    }; // 0x0900_0000
+    pl011::init(uart_addr);
+    pl011::init_irq();
+
     timer::TimerDriver.init();
+    timer::TimerDriver.register_from_devicetree_and_enable_irq_handler();
 }

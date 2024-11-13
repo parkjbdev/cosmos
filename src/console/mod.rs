@@ -1,7 +1,3 @@
-use generic_once_cell::OnceCell;
-
-use crate::sync::{interface::Mutex, null_lock::NullLock, spinlock::RawSpinlock};
-
 pub mod log;
 
 pub mod interface {
@@ -18,37 +14,9 @@ pub mod interface {
         fn clear_rx(&self);
     }
 
-    pub trait Statistics {
-        fn chars_written(&self) -> usize {
-            0
-        }
-        fn chars_read(&self) -> usize {
-            0
-        }
-    }
-
     pub trait Echo {
         fn echo(&self);
     }
 
-    pub trait Console: Write + Read + Statistics + Echo {}
-}
-
-// static CONSOLE: NullLock<Option<&'static (dyn interface::Console + Sync)>> = NullLock::new(None);
-pub const CONSOLE: OnceCell<RawSpinlock, &'static (dyn interface::Console + Sync)> = OnceCell::new();
-
-pub fn register_console(console: &'static (dyn interface::Console + Sync)) -> Result<(), &'static (dyn interface::Console + Sync)> {
-    // CONSOLE.lock(|con| *con = Some(console))
-    CONSOLE.set(console)
-}
-
-pub fn console() -> &'static dyn interface::Console {
-    // CONSOLE.lock(|con| *con).unwrap()
-    *CONSOLE.get().unwrap()
-}
-
-#[cfg(target_os = "none")]
-#[doc(hidden)]
-pub fn print(args: core::fmt::Arguments<'_>) {
-    console().write_fmt(args).unwrap();
+    pub trait Console: Write + Read + Echo {}
 }

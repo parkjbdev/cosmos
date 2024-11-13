@@ -18,4 +18,3 @@ impl Display for InterruptType {
         }
     }
 }
-

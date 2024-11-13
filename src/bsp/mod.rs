@@ -1,6 +1,6 @@
 #[cfg(feature = "qemu-virt")]
-mod driver;
-mod virt;
+pub mod driver;
+pub mod virt;
 
 #[cfg(feature = "qemu-virt")]
 pub use driver::arm::*;

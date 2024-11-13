@@ -2,7 +2,10 @@ use super::{
     address::{Address, AddressType},
     page::PageAddress,
 };
-use core::{fmt::{self, Display, Formatter}, ops::Range};
+use core::{
+    fmt::{self, Display, Formatter},
+    ops::Range,
+};
 
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug, Eq, PartialOrd, PartialEq)]
@@ -42,7 +45,6 @@ impl<ADDRESS_TYPE: AddressType> MemoryRegion<ADDRESS_TYPE> {
         end_exclusive - start
     }
 }
-
 
 impl<ADDRESS_TYPE: AddressType> IntoIterator for MemoryRegion<ADDRESS_TYPE> {
     type Item = PageAddress<ADDRESS_TYPE>;
