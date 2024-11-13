@@ -1,10 +1,12 @@
-pub mod mmu;
 pub mod attribute;
+pub mod mmu;
 use mmu::MMU;
 
+use crate::bsp::devicetree::{DeviceTreeDriver, DEVICE_TREE};
 use crate::bsp::memory::symbols;
+use crate::driver::interface::DeviceDriver;
+use crate::memory;
 use crate::memory::types::MemorySize;
-use crate::{arch::devicetree, memory};
 use log::info;
 
 pub fn mmu() -> &'static impl memory::mmu::interface::MMU {
@@ -16,7 +18,9 @@ pub fn get_page_size() -> MemorySize {
 }
 
 pub fn get_ramrange() -> (u64, MemorySize) {
-    let mem_devt = devicetree::dtb()
+    let mem_devt = DEVICE_TREE 
+        .get()
+        .unwrap()
         .get_property("/memory", "device_type")
         .unwrap();
 
@@ -27,7 +31,11 @@ pub fn get_ramrange() -> (u64, MemorySize) {
             == "memory"
     );
 
-    let mem_reg = devicetree::dtb().get_property("/memory", "reg").unwrap();
+    let mem_reg = DEVICE_TREE
+        .get()
+        .unwrap()
+        .get_property("/memory", "reg")
+        .unwrap();
     let (start, size) = mem_reg.split_at(core::mem::size_of::<u64>());
     let ram_start = u64::from_be_bytes(start.try_into().unwrap());
     let ram_size = usize::from_be_bytes(size.try_into().unwrap());

@@ -3,7 +3,6 @@ pub mod irq_type;
 use self::irq_type::InterruptType;
 use super::state::ExceptionState;
 use super::Handler;
-use crate::arch::devicetree;
 use crate::sync::spinlock::{RawSpinlock, Spinlock};
 use aarch64_cpu::asm;
 use aarch64_cpu::registers::*;
@@ -27,44 +26,6 @@ where
     let ret = f();
     DAIF.set(daif);
     ret
-}
-
-pub fn init_gic() -> Result<(), GicV3> {
-    // Check Compatible GIC
-    let compat = core::str::from_utf8(
-        devicetree::dtb()
-            .get_property("/intc", "compatible")
-            .unwrap(),
-    )
-    .unwrap();
-    if !compat.contains("arm,gic-v3") {
-        panic!("Compatible GIC (arm,gic-v3) Not Found");
-    }
-
-    // Parse GICD & GICC from the devicetree /intc reg
-    let reg = devicetree::dtb().get_property("/intc", "reg").unwrap();
-
-    // GIC Distributor interface (GICD)
-    let (slice, residual_slice) = reg.split_at(core::mem::size_of::<u64>());
-    let gicd_start = u64::from_be_bytes(slice.try_into().unwrap());
-    let (slice, residual_slice) = residual_slice.split_at(core::mem::size_of::<u64>());
-    let gicd_size = u64::from_be_bytes(slice.try_into().unwrap());
-
-    // GIC Redistributors (GICR), one range per redistributor region
-    let (slice, residual_slice) = residual_slice.split_at(core::mem::size_of::<u64>());
-    let gicr_start = u64::from_be_bytes(slice.try_into().unwrap());
-    let (slice, _residual_slice) = residual_slice.split_at(core::mem::size_of::<u64>());
-    let gicr_size = u64::from_be_bytes(slice.try_into().unwrap());
-
-    let gicd_start: *mut u64 = gicd_start as _;
-    let gicr_start: *mut u64 = gicr_start as _;
-
-    // TODO: allocate gicd and gicr to virtualmem
-    let mut gic = unsafe { GicV3::new(gicd_start, gicr_start) };
-    GicV3::set_priority_mask(0xff);
-    gic.setup();
-
-    unsafe { GIC.set(gic) }
 }
 
 const SGI_START: u32 = 0;

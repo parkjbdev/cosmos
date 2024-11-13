@@ -1,4 +1,6 @@
-use crate::sync::{interface::Mutex, null_lock::NullLock};
+use generic_once_cell::OnceCell;
+
+use crate::sync::{interface::Mutex, null_lock::NullLock, spinlock::RawSpinlock};
 
 pub mod log;
 
@@ -32,14 +34,17 @@ pub mod interface {
     pub trait Console: Write + Read + Statistics + Echo {}
 }
 
-static CONSOLE: NullLock<Option<&'static (dyn interface::Console + Sync)>> = NullLock::new(None);
+// static CONSOLE: NullLock<Option<&'static (dyn interface::Console + Sync)>> = NullLock::new(None);
+pub const CONSOLE: OnceCell<RawSpinlock, &'static (dyn interface::Console + Sync)> = OnceCell::new();
 
-pub fn register_console(console: &'static (dyn interface::Console + Sync)) {
-    CONSOLE.lock(|con| *con = Some(console))
+pub fn register_console(console: &'static (dyn interface::Console + Sync)) -> Result<(), &'static (dyn interface::Console + Sync)> {
+    // CONSOLE.lock(|con| *con = Some(console))
+    CONSOLE.set(console)
 }
 
 pub fn console() -> &'static dyn interface::Console {
-    CONSOLE.lock(|con| *con).unwrap()
+    // CONSOLE.lock(|con| *con).unwrap()
+    *CONSOLE.get().unwrap()
 }
 
 #[cfg(target_os = "none")]

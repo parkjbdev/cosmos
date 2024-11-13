@@ -1,13 +1,14 @@
 use crate::{
+    arch::irq::Interrupt,
+    bsp::devicetree::DEVICE_TREE,
     console, driver, interrupt,
-    sync::{interface::Mutex, null_lock::NullLock},
+    sync::{interface::Mutex, null_lock::NullLock, spinlock::RawSpinlock},
 };
 use core::fmt;
-
 // PL011UartInner
+use aarch64_cpu::registers::{Readable, Writeable};
 use super::pl011_inner::PL011UartInner;
 use super::registers::*;
-use aarch64_cpu::registers::{Readable, Writeable};
 
 // PL011Uart is a wrapper of PL011UartInner
 pub struct PL011Uart {
@@ -23,8 +24,10 @@ impl PL011Uart {
 }
 
 impl driver::interface::DeviceDriver for PL011Uart {
-    fn init(&self) -> Result<(), &'static str> {
-        self.inner.lock(|inner| inner.init())
+    fn init(&mut self) -> Result<(), &'static str> {
+        self.inner.lock(|inner| inner.init());
+
+        Ok(())
     }
 }
 

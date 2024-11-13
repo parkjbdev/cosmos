@@ -58,7 +58,7 @@ impl PL011UartInner {
 }
 
 impl driver::interface::DeviceDriver for PL011UartInner {
-    fn init(&self) -> Result<(), &'static str> {
+    fn init(&mut self) -> Result<(), &'static str> {
         self.flush();
 
         // Clear

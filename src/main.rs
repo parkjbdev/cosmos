@@ -24,6 +24,7 @@ pub mod sync;
 
 extern crate log as log_crate;
 use crate::arch::exception::el::get_current_el;
+use bsp::init_drivers;
 use core::alloc::Layout;
 use log_crate::{error, info};
 
@@ -31,14 +32,14 @@ use log_crate::{error, info};
 pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // Initialize Exceptions
     arch::irq::irq_disable();
-    arch::exception::init();
+    arch::exception::init_exception_vector();
 
     // Initialize Console
     console::log::init();
-    arch::console::init();
 
-    // Initialize Timer
-    arch::timer::init();
+    // Initialize Drivers
+    init_drivers();
+
     arch::irq::irq_enable();
 
     let ver = env!("CARGO_PKG_VERSION");

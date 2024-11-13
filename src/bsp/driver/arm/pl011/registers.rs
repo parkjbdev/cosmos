@@ -3,7 +3,6 @@ use tock_registers::{
     registers::{ReadOnly, ReadWrite, WriteOnly},
 };
 
-
 // PL011 UART registers.
 // Descriptions taken from "PrimeCell UART (PL011) Technical Reference Manual" r1p5.
 register_bitfields! {

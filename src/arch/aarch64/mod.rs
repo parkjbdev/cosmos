@@ -1,4 +1,3 @@
-pub mod devicetree;
 pub mod console;
 pub mod drivers;
 pub mod exception;
@@ -11,8 +10,12 @@ pub use exception::irq;
 
 use aarch64_cpu::asm;
 
+use crate::bsp::devicetree::DEVICE_TREE;
+
 pub fn get_cpus() -> usize {
-    devicetree::dtb()
+    DEVICE_TREE
+        .get()
+        .unwrap()
         .enum_subnodes("/cpus")
         .filter(|cpu| cpu.split('@').next().unwrap() == "cpu")
         .count()
