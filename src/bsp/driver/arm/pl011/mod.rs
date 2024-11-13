@@ -1,5 +1,6 @@
 mod registers;
 
+use crate::driver::interface::DeviceDriver;
 use crate::{
     arch::irq::Interrupt,
     bsp::devicetree,
@@ -15,8 +16,11 @@ use tock_registers::interfaces::{Readable, Writeable};
 pub static CONSOLE: Mutex<Option<PL011Uart>> = Mutex::new(None);
 
 pub fn init(base: u32) {
+    let mut uart = PL011Uart::new(base);
+    uart.init();
+
     let mut console = CONSOLE.lock();
-    *console = Some(PL011Uart::new(base));
+    *console = Some(uart);
 }
 
 pub fn init_irq() {
@@ -34,6 +38,7 @@ pub fn init_irq() {
         |state| {
             CONSOLE.lock().as_mut().unwrap().handler(|| {
                 CONSOLE.lock().as_mut().unwrap().echo();
+                // CONSOLE.lock().as_mut().unwrap().write_char('h');
             });
             true
         },
@@ -99,38 +104,52 @@ impl PL011Uart {
             self.write_char(c)
         }
     }
+
+    pub fn clear_rx(&mut self) {
+        println!("Clearing RX");
+        while self.read_char(true).is_some() {}
+    }
 }
 
 impl driver::interface::DeviceDriver for PL011Uart {
     fn init(&mut self) -> Result<(), &'static str> {
+        // phys_println!("Initializing PL011 UART");
         self.flush();
 
         // Clear
+        // phys_println!("Clearing");
         self.registers.CR.set(0);
         self.registers.ICR.write(ICR::ALL::CLEAR);
 
         // Set baud rate
+        // phys_println!("Setting Baud Rate");
         self.registers.IBRD.write(IBRD::BAUD_DIVINT.val(3));
         self.registers.FBRD.write(FBRD::BAUD_DIVFRAC.val(16));
 
         // Set Data Frame
+        // phys_println!("Setting Data Frame");
         self.registers
             .LCR_H
             .write(LCR_H::WLEN::EightBit + LCR_H::FEN::FifosEnabled);
 
         // Set RX FIFO fill level at 1/8.
+        // phys_println!("Setting RX FIFO Level");
         self.registers.IFLS.write(IFLS::RXIFLSEL::OneEigth);
 
         // Enable RX IRQ + RX timeout IRQ.
+        // phys_println!("Enabling RX IRQ");
         self.registers
             .IMSC
             .write(IMSC::RXIM::Enabled + IMSC::RTIM::Enabled);
 
         // Set Control Register
         // Enable UART, RX, TX
+        // phys_println!("Enabling UART");
         self.registers
             .CR
             .write(CR::UARTEN::Enabled + CR::TXE::Enabled + CR::RXE::Enabled);
+
+        phys_println!("PL011 UART Initialized");
 
         Ok(())
     }

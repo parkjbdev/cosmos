@@ -34,7 +34,9 @@ impl driver::interface::DeviceDriver for GicDriver {
         GicV3::set_priority_mask(0xff);
         gic.setup();
 
-        let result = unsafe { GIC.set(gic) };
+        // let mut _gic = GIC.lock();
+        // *_gic = Some(gic);
+        unsafe { GIC.set(gic) };
 
         Ok(())
     }

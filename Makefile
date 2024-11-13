@@ -1,6 +1,7 @@
 CPU := cortex-a76
 CPU_CORE := 1
-RAM_SIZE := 16384
+# RAM_SIZE := 8192
+RAM_SIZE := 4096 
 
 KERNEL := ./target/aarch64-unknown-none-softfloat/debug/cosmos
 

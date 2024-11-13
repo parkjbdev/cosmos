@@ -70,21 +70,3 @@ _start:
 .type	_start, function
 .global	_start
 
-
-// .extern __boot_core_stack_end 
-// .globl _start
-// 
-// 
-// // Start
-// _start:
-//     ldr x30, =__boot_core_stack_end
-//     mov sp, x30
-//     bl _start_cosmos
-// 
-// 
-// // System off
-// .equ _psci_system_off, 0x84000008
-// .globl system_off
-// system_off:
-//     ldr x0, =_psci_system_off
-//     hvc #0

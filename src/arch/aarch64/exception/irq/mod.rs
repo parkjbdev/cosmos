@@ -17,6 +17,7 @@ pub static INTERRUPTS: Spinlock<[Option<Interrupt>; MAX_INTERRUPTS]> =
     Spinlock::new([None; MAX_INTERRUPTS]);
 
 pub(crate) static mut GIC: OnceCell<RawSpinlock, GicV3> = OnceCell::new();
+// pub(crate) static GIC: Mutex<Option<GicV3>> = Mutex::new(None);
 
 pub fn exec_with_irq_disabled<F, R>(f: F) -> R
 where
@@ -121,8 +122,11 @@ impl Interrupt {
     }
 
     pub fn register(&self) -> &Self {
-        let gic = unsafe { GIC.get_mut().expect("GIC is not initialized") };
+        // let mut gic_binding = GIC.lock();
+        // let gic = gic_binding.as_mut().expect("GIC is not initialized");
+        let gic = unsafe { GIC.get_mut().unwrap() };
         let intid = self.get_id();
+        println!("Registering interrupt: {}", self);
         gic.set_interrupt_priority(intid, self.prio);
         gic.set_trigger(intid, self.trigger);
         gic.enable_interrupt(intid, true);
@@ -134,6 +138,8 @@ impl Interrupt {
     }
 
     pub fn enable_irq(&self, enable: bool) -> &Self {
+        // let mut gic_binding = GIC.lock();
+        // let gic = gic_binding.as_mut().expect("GIC is not initialized");
         let gic = unsafe { GIC.get_mut().unwrap() };
         gic.enable_interrupt(self.get_id(), enable);
         self

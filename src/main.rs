@@ -28,17 +28,17 @@ pub mod memory;
 
 extern crate log as log_crate;
 use crate::arch::exception::el::get_current_el;
-use bsp::init_drivers;
+use bsp::{init_drivers, pl011::CONSOLE};
 use core::alloc::Layout;
 use log_crate::{error, info};
 
 #[no_mangle]
-pub(crate) unsafe extern "C" fn kernel_main() -> ! {
+pub(crate) unsafe extern "C" fn kernel_main() {
     // Initialize Exceptions
     arch::irq::irq_disable();
     arch::exception::init_exception_vector();
 
-    // Initialize Console
+    // Initialize Logger
     console::log::init();
 
     // Initialize Drivers
@@ -60,10 +60,10 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
 
     info!("Current Page Size: {}", arch::memory::get_page_size());
 
-    let phys_kernel_tables_base_addr = match memory::kernel_mapper::kernel_map_binary() {
-        Err(string) => panic!("Error mapping kernel binary: {}", string),
-        Ok(addr) => addr,
-    };
+    // let phys_kernel_tables_base_addr = match memory::kernel_mapper::kernel_map_binary() {
+    //     Err(string) => panic!("Error mapping kernel binary: {}", string),
+    //     Ok(addr) => addr,
+    // };
 
     // info!("Kernel binary mapped at: {}", phys_kernel_tables_base_addr);
 
@@ -84,7 +84,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
 
     // info!("Testing Exceptions");
     // arch::test::exception::test_segfault();
-    // arch::test::exception::test_sgi();
+    arch::test::exception::test_sgi();
     // info!("Test Pass");
 
     info!("Current Exception Level: {}", get_current_el());
@@ -100,6 +100,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
 
     // let console = console::console();
     // console.clear_rx();
+    CONSOLE.lock().as_mut().unwrap().clear_rx();
 
     loop {
         arch::halt();
