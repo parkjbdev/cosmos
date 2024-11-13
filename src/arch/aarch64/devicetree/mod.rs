@@ -1,25 +1,28 @@
-use crate::{bsp::memory::symbols::DEVICE_TREE_START, sync::spinlock::RawSpinlock};
+use hermit_dtb::{Dtb, EnumSubnodesIter};
 
-use generic_once_cell::OnceCell;
-use hermit_dtb::Dtb;
+use spin::Mutex;
 
-static DTB: OnceCell<RawSpinlock, Dtb> = OnceCell::new();
+pub static DEVICE_TREE: Mutex<Option<Dtb>> = Mutex::new(None);
 
-fn init_dtb() -> Result<(), Dtb<'static>> {
-    DTB.set(unsafe { Dtb::from_raw(sptr::from_exposed_addr(DEVICE_TREE_START as usize)).unwrap() })
+pub fn init(base: u32) {
+    let mut device_tree = DEVICE_TREE.lock();
+    *device_tree = Some(unsafe { Dtb::from_raw(sptr::from_exposed_addr(base as usize)).unwrap() });
 }
 
-pub fn dtb<'a>() -> &'a Dtb<'a> {
-    match DTB.get() {
-        Some(dtb) => dtb,
-        None => {
-            // Lazy Initialization
-            match init_dtb() {
-                Err(e) => panic!("Cannot Initialize DTB"),
-                _ => (),
-            }
+pub fn update_base_address(new_base: u32) {
+    let mut device_tree = DEVICE_TREE.lock();
+    *device_tree =
+        Some(unsafe { Dtb::from_raw(sptr::from_exposed_addr(new_base as usize)).unwrap() });
+}
 
-            DTB.get().unwrap()
-        }
-    }
+pub fn get_property<'a>(path: &'a str, property: &'a str) -> Option<&'a [u8]> {
+    DEVICE_TREE
+        .lock()
+        .as_ref()
+        .unwrap()
+        .get_property(path, property)
+}
+
+pub fn enum_subnodes(path: &str) -> EnumSubnodesIter {
+    DEVICE_TREE.lock().as_ref().unwrap().enum_subnodes(path)
 }

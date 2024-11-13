@@ -28,9 +28,6 @@ pub fn init() {
 
     VBAR_EL1.set(unsafe { __exception_vector.get() as u64 });
 
-    // Set GIC
-    irq::init_gic().expect("Failed to initialize GIC");
-
     barrier::isb(barrier::SY);
 }
 

@@ -31,14 +31,21 @@ use log_crate::{error, info};
 pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // Initialize Exceptions
     arch::irq::irq_disable();
+
+    // Initialize BSP (mmio)
+    bsp::init();
+
+    // Initialize Logger
+    console::log::init();
+
     arch::exception::init();
 
-    // Initialize Console
-    console::log::init();
-    arch::console::init();
+    // Initialize Interrupts
+    bsp::init_irq();
 
-    // Initialize Timer
-    arch::timer::init();
+    // Initialize Timer Interrupt
+    arch::timer::init_irq();
+
     arch::irq::irq_enable();
 
     let ver = env!("CARGO_PKG_VERSION");
@@ -55,18 +62,18 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
 
     info!("Current Page Size: {}", arch::memory::get_page_size());
 
-    let phys_kernel_tables_base_addr = match memory::kernel_mapper::kernel_map_binary() {
-        Err(string) => panic!("Error mapping kernel binary: {}", string),
-        Ok(addr) => addr,
-    };
+    // let phys_kernel_tables_base_addr = match memory::kernel_mapper::kernel_map_binary() {
+    //     Err(string) => panic!("Error mapping kernel binary: {}", string),
+    //     Ok(addr) => addr,
+    // };
 
-    info!("Kernel binary mapped at: {}", phys_kernel_tables_base_addr);
+    // info!("Kernel binary mapped at: {}", phys_kernel_tables_base_addr);
 
-    if let Err(e) = memory::mmu::init(phys_kernel_tables_base_addr) {
-        panic!("Enabling MMU failed: {}", e);
-    }
+    // if let Err(e) = memory::mmu::init(phys_kernel_tables_base_addr) {
+    //     panic!("Enabling MMU failed: {}", e);
+    // }
 
-    memory::mmu::post_init();
+    // memory::mmu::post_init();
 
     info!("Timer Status: ");
     arch::timer::print_timer_status();

@@ -5,13 +5,13 @@ use core::time::Duration;
 use log::info;
 use tock_registers::interfaces::ReadWriteable;
 
-pub fn init() {
+pub fn init_irq() {
     let timer_compatible =
-        core::str::from_utf8(devicetree::dtb().get_property("/timer", "compatible").unwrap()).unwrap();
+        core::str::from_utf8(devicetree::get_property("/timer", "compatible").unwrap()).unwrap();
     if !timer_compatible.contains("armv8-timer") {
         panic!("Compatible Timer (armv8-timer) Not Found");
     }
-    let timer_interrupts = devicetree::dtb().get_property("/timer", "interrupts").unwrap();
+    let timer_interrupts = devicetree::get_property("/timer", "interrupts").unwrap();
     const SPLIT_SIZE: usize = core::mem::size_of::<u32>();
 
     // Order: Secure Timer[0:2], NonSecure Timer[3:5], Virtual Timer[6:8], Hypervisor Timer[9:11]

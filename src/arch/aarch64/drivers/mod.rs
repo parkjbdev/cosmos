@@ -1,5 +1,4 @@
-pub(super) mod pl011;
-use crate::arch::devicetree;
+pub mod pl011;
 use core::{marker::PhantomData, ops};
 
 pub struct MMIODerefWrapper<T> {

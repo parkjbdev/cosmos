@@ -19,6 +19,7 @@ hermit-dtb = "0.1.1"
 lock_api = "0.4.11"
 log = "0.4.20"
 plain = "0.2.3"
+spin = "0.9.8"
 sptr = "0.3.2"
 tock-registers = { version = "0.8.x", default-features = false, features = ["register_types"] }
 
