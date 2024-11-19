@@ -1,5 +1,5 @@
 use super::exception::state::ExceptionState;
-use crate::arch::{devicetree, exception::irq::Interrupt};
+use crate::arch::{drivers::devicetree, exception::irq::Interrupt};
 use aarch64_cpu::{asm::barrier, registers::*};
 use core::time::Duration;
 use log::info;

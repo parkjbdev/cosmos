@@ -3,10 +3,9 @@ mod pl011_inner;
 mod registers;
 
 use crate::{
-    arch::{devicetree, irq::Interrupt},
-    console::interface::Echo,
+    arch::{drivers::devicetree, irq::Interrupt},
+    console::console,
     driver::interface::DeviceDriver,
-    interrupt::interface::IRQHandler,
     sync::spinlock::RawSpinlock,
 };
 use generic_once_cell::OnceCell;
@@ -15,8 +14,8 @@ use pl011::PL011Uart;
 pub static PL011_UART: OnceCell<RawSpinlock, PL011Uart> = OnceCell::new();
 
 pub fn init(base: u32) {
-    let _ = PL011_UART.set(PL011Uart::new(base));
-
+    #![allow(unused_must_use)]
+    PL011_UART.set(PL011Uart::new(base));
     PL011_UART.get().unwrap().init();
 }
 
@@ -33,8 +32,8 @@ pub fn init_irq() {
         u32::from_be_bytes(chunks[2]),
         0x00,
         |state| {
-            PL011_UART.get().unwrap().handler(|| {
-                PL011_UART.get().unwrap().echo();
+            console().handler(|| {
+                console().echo();
             });
             true
         },

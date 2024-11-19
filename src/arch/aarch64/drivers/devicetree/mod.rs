@@ -1,5 +1,4 @@
 use hermit_dtb::{Dtb, EnumSubnodesIter};
-
 use spin::Mutex;
 
 pub static DEVICE_TREE: Mutex<Option<Dtb>> = Mutex::new(None);

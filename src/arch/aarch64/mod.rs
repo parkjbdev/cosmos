@@ -1,5 +1,4 @@
 pub mod console;
-pub mod devicetree;
 pub mod drivers;
 pub mod exception;
 pub mod memory;
@@ -10,6 +9,7 @@ pub mod timer;
 pub use exception::irq;
 
 use aarch64_cpu::asm;
+use drivers::devicetree;
 
 pub fn get_cpus() -> usize {
     devicetree::enum_subnodes("/cpus")

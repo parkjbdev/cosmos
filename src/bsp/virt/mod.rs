@@ -1,5 +1,6 @@
+use crate::arch::drivers::devicetree;
 use crate::arch::drivers::pl011::{self, PL011_UART};
-use crate::arch::{devicetree, irq};
+use crate::arch::irq;
 use crate::console::register_console;
 
 pub mod memory;
@@ -20,6 +21,7 @@ pub fn init() {
     }; // 0x09000000
 
     pl011::init(uart_addr);
+    // pl011::init(0x09000000);
     register_console(PL011_UART.get().unwrap());
 
     // Initialize GIC
@@ -50,8 +52,7 @@ pub fn init() {
 
     // TODO: allocate gicd and gicr to virtualmem
     irq::init_gic(gicd_start, gicr_start).expect("Failed to initialize GIC");
-
-
+    // irq::init_gic(0x08000000 as _, 0x080A0000 as _).expect("Failed to initialize GIC");
 }
 
 pub fn init_irq() {

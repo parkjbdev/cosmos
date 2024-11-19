@@ -1,4 +1,6 @@
 pub mod pl011;
+pub mod devicetree;
+
 use core::{marker::PhantomData, ops};
 
 pub struct MMIODerefWrapper<T> {

@@ -1,9 +1,11 @@
-use crate::sync::{interface::Mutex, null_lock::NullLock};
+use spin::Mutex;
 
 pub mod log;
 
 pub mod interface {
     use core::fmt;
+
+    use crate::interrupt;
 
     pub trait Write {
         fn write_char(&self, c: char);
@@ -29,17 +31,17 @@ pub mod interface {
         fn echo(&self);
     }
 
-    pub trait Console: Write + Read + Statistics + Echo {}
+    pub trait Console: Write + Read + Statistics + Echo + interrupt::interface::IRQHandler {}
 }
 
-static CONSOLE: NullLock<Option<&'static (dyn interface::Console + Sync)>> = NullLock::new(None);
+static CONSOLE: Mutex<Option<&'static (dyn interface::Console + Sync)>> = Mutex::new(None);
 
 pub fn register_console(console: &'static (dyn interface::Console + Sync)) {
-    CONSOLE.lock(|con| *con = Some(console))
+    *CONSOLE.lock() = Some(console)
 }
 
 pub fn console() -> &'static dyn interface::Console {
-    CONSOLE.lock(|con| *con).unwrap()
+    CONSOLE.lock().unwrap()
 }
 
 #[cfg(target_os = "none")]
