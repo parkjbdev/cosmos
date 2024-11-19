@@ -1,18 +1,26 @@
-use core::iter::Step;
-
 use crate::bsp;
-
+use core::{fmt::Display, iter::Step};
 use super::address::{Address, AddressType};
 
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug, Eq, PartialOrd, PartialEq)]
-pub struct PageAddress<ADDRESS_TYPE: AddressType> {
-    inner: Address<ADDRESS_TYPE>,
+pub struct PageAddress<T: AddressType> {
+    inner: Address<T>,
 }
 
-#[allow(non_camel_case_types)]
-impl<ADDRESS_TYPE: AddressType> PageAddress<ADDRESS_TYPE> {
-    pub fn inner(&self) -> Address<ADDRESS_TYPE> {
+impl<T: AddressType> Display for PageAddress<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:#x}", self.inner.value())
+    }
+}
+
+impl<T: AddressType> PageAddress<T> {
+    pub fn new(addr: Address<T>) -> Self {
+        Self {
+            inner: addr
+        }
+    }
+    pub fn inner(&self) -> Address<T> {
         self.inner
     }
 
@@ -40,15 +48,13 @@ impl<ADDRESS_TYPE: AddressType> PageAddress<ADDRESS_TYPE> {
     }
 }
 
-#[allow(non_camel_case_types)]
-impl<ADDRESS_TYPE: AddressType> From<Address<ADDRESS_TYPE>> for PageAddress<ADDRESS_TYPE> {
-    fn from(address: Address<ADDRESS_TYPE>) -> Self {
+impl<T: AddressType> From<Address<T>> for PageAddress<T> {
+    fn from(address: Address<T>) -> Self {
         Self { inner: address }
     }
 }
 
-#[allow(non_camel_case_types)]
-impl<ADDRESS_TYPE: AddressType> From<usize> for PageAddress<ADDRESS_TYPE> {
+impl<T: AddressType> From<usize> for PageAddress<T> {
     fn from(addr: usize) -> Self {
         assert!(
             super::super::align::is_aligned(addr, bsp::memory::KernelGranule::SIZE),
@@ -61,7 +67,7 @@ impl<ADDRESS_TYPE: AddressType> From<usize> for PageAddress<ADDRESS_TYPE> {
     }
 }
 
-impl<ATYPE: AddressType> Step for PageAddress<ATYPE> {
+impl<T: AddressType> Step for PageAddress<T> {
     fn steps_between(start: &Self, end: &Self) -> Option<usize> {
         if start > end {
             return None;
