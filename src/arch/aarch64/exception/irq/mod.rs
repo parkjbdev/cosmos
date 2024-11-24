@@ -3,7 +3,6 @@ pub mod irq_type;
 use self::irq_type::InterruptType;
 use super::state::ExceptionState;
 use super::Handler;
-use crate::arch::devicetree;
 use crate::sync::spinlock::{RawSpinlock, Spinlock};
 use aarch64_cpu::asm;
 use aarch64_cpu::registers::*;

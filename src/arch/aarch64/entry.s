@@ -15,8 +15,8 @@ _start:
   cmp x1, #0x8
   b.ne .L_parking_loop
 
-  ADR_REL x0, __bss_start
-  ADR_REL x1, __bss_end
+  ADR_REL x0, __bss_start_
+  ADR_REL x1, __bss_end_
   cmp x0, x1
   b.ne .L_bss_init_loop
 
@@ -42,21 +42,8 @@ _start:
 .L_prepare_kernel:
 	// This loads the physical address of the stack end. For details see
 	// https://github.com/rust-embedded/rust-raspberrypi-OS-tutorials/blob/master/16_virtual_mem_part4_higher_half_kernel/src/bsp/raspberrypi/link.ld
-  ADR_REL x0, __boot_core_stack_end
+  ADR_REL x0, __boot_core_stack_end_
 	mov		sp, x0
-
-  // Setting Jiffies 
-  // mrs x2, CNTFRQ_EL0
-  // cmp x2, xzr
-  // b.eq .L_parking_loop
-
-  // adrp x1, ARCH_TIMER_COUNTER_FREQ 
-  // add x1, x1, #:lo12:ARCH_TIMER_COUNTER_FREQ
-
-  // str w2, [x1]
-
-  // mov x1, 0x1000
-  // msr CNTFRQ_EL0, x1 
 
 	// Jump to Rust code.
 	b	_start_cosmos

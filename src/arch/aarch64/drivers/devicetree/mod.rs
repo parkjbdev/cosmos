@@ -5,7 +5,10 @@ pub static DEVICE_TREE: Mutex<Option<Dtb>> = Mutex::new(None);
 
 pub fn init(base: u32) {
     let mut device_tree = DEVICE_TREE.lock();
-    *device_tree = Some(unsafe { Dtb::from_raw(sptr::from_exposed_addr(base as usize)).unwrap() });
+
+    *device_tree = Some(unsafe {
+        Dtb::from_raw(sptr::from_exposed_addr(base as usize)).expect("Error Initializing DT")
+    });
 }
 
 pub fn update_base_address(new_base: u32) {

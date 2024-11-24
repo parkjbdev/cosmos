@@ -18,7 +18,7 @@ type Handler = fn(state: &ExceptionState) -> bool;
 
 pub(crate) static mut GIC: OnceCell<RawSpinlock, GicV3> = OnceCell::new();
 
-pub fn init() {
+pub fn set_exception_handler() {
     // TODO: Assert interrupts are disabled
 
     // Set Exception Vector Table

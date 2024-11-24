@@ -37,7 +37,7 @@ pub mod interface {
 static CONSOLE: Mutex<Option<&'static (dyn interface::Console + Sync)>> = Mutex::new(None);
 
 pub fn register_console(console: &'static (dyn interface::Console + Sync)) {
-    *CONSOLE.lock() = Some(console)
+    *CONSOLE.lock() = Some(console);
 }
 
 pub fn console() -> &'static dyn interface::Console {

@@ -9,7 +9,7 @@ use crate::{
     sync::spinlock::RawSpinlock,
 };
 use generic_once_cell::OnceCell;
-use pl011::PL011Uart;
+pub use pl011::PL011Uart;
 
 pub static PL011_UART: OnceCell<RawSpinlock, PL011Uart> = OnceCell::new();
 

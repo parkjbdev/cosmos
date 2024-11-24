@@ -4,8 +4,8 @@ use core::{
     ops,
 };
 
-use crate::{bsp, memory::align};
 use super::MemorySize;
+use crate::{bsp, memory::align};
 
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct Physical;
@@ -55,6 +55,12 @@ impl<T: AddressType> Address<T> {
     }
 }
 
+impl Into<Address<Physical>> for usize {
+    fn into(self) -> Address<Physical> {
+        Address::<Physical>::new(self)
+    }
+}
+
 impl<T: AddressType> ops::Add<Address<T>> for Address<T> {
     type Output = Address<T>;
 
@@ -97,3 +103,16 @@ impl<T: AddressType> fmt::LowerHex for Address<T> {
         fmt::LowerHex::fmt(&self.value, f) // delegate to i32's implementation
     }
 }
+
+impl<T: AddressType> From<Address<T>> for usize {
+    fn from(value: Address<T>) -> Self {
+        value.value()
+    }
+}
+
+impl<T: AddressType> From<Address<T>> for u32 {
+    fn from(value: Address<T>) -> Self {
+        value.value() as u32
+    }
+}
+

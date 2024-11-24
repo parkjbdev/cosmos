@@ -5,25 +5,57 @@ use crate::console::register_console;
 
 pub mod memory;
 
-pub fn init() {
-    // Initialize Device Tree
-    devicetree::init(0x40000000);
+fn init_device_tree() {
+    __println!("Initializing DeviceTree");
 
+    devicetree::init(0x4000_0000);
+
+    // // Initialize Device Tree
+    // let device_tree_start: usize = 0x4000_0000;
+    // let device_tree_end: usize = 0x4001_0000;
+
+    // let virt_addr = memory::kernel_map_mmio(
+    //     "DEVICE TREE",
+    //     device_tree_start.into(),
+    //     device_tree_end.into(),
+    // );
+
+    // // dbg!("virt_addr of device_tree: {}", virt_addr);
+    // dbg!(virt_addr);
+
+    // devicetree::init(virt_addr.into());
+
+    __println!("DeviceTree Initialization Successful");
+}
+
+fn init_uart() {
     // Initialize UART
-    let uart_addr = {
+    __println!("Initializing PL011 UART");
+    let uart_addr_start: usize = {
         let stdout = devicetree::get_property("/chosen", "stdout-path").unwrap();
+        __println!("{:?}", stdout);
         core::str::from_utf8(stdout)
             .unwrap()
             .trim_matches(char::from(0))
             .split_once('@')
             .map(|(_, addr)| u32::from_str_radix(addr, 16).unwrap())
             .unwrap()
-    }; // 0x09000000
+    } as usize; // 0x09000000
+    __println!("{:#x}", uart_addr_start);
 
-    pl011::init(uart_addr);
-    // pl011::init(0x09000000);
+    let uart_addr_start = 0x0900_0000;
+    let uart_addr_end: usize = uart_addr_start + 0x1000;
+
+    let virt_addr =
+        memory::kernel_map_mmio("PL011 UART", uart_addr_start.into(), uart_addr_end.into());
+    __println!("{}", virt_addr);
+
+    pl011::init(virt_addr.into());
     register_console(PL011_UART.get().unwrap());
+    __println!("PL011 Initialization Successful");
+}
 
+fn init_gicv3() {
     // Initialize GIC
     // Check Compatible GIC
     let compat =
@@ -37,22 +69,31 @@ pub fn init() {
 
     // GIC Distributor interface (GICD)
     let (slice, residual_slice) = reg.split_at(core::mem::size_of::<u64>());
-    let gicd_start = u64::from_be_bytes(slice.try_into().unwrap());
+    let gicd_start = u64::from_be_bytes(slice.try_into().unwrap()) as usize;
     let (slice, residual_slice) = residual_slice.split_at(core::mem::size_of::<u64>());
-    let gicd_size = u64::from_be_bytes(slice.try_into().unwrap());
+    let gicd_size = u64::from_be_bytes(slice.try_into().unwrap()) as usize;
+    let gicd_virt_addr: usize =
+        memory::kernel_map_mmio("GICD", gicd_start.into(), (gicd_start + gicd_size).into()).into();
 
     // GIC Redistributors (GICR), one range per redistributor region
     let (slice, residual_slice) = residual_slice.split_at(core::mem::size_of::<u64>());
-    let gicr_start = u64::from_be_bytes(slice.try_into().unwrap());
+    let gicr_start = u64::from_be_bytes(slice.try_into().unwrap()) as usize;
     let (slice, _residual_slice) = residual_slice.split_at(core::mem::size_of::<u64>());
-    let gicr_size = u64::from_be_bytes(slice.try_into().unwrap());
+    let gicr_size = u64::from_be_bytes(slice.try_into().unwrap()) as usize;
+    let gicr_virt_addr: usize =
+        memory::kernel_map_mmio("GICR", gicr_start.into(), (gicr_start + gicr_size).into()).into();
 
-    let gicd_start: *mut u64 = gicd_start as _; // 0x08000000
-    let gicr_start: *mut u64 = gicr_start as _; // 0x080A0000
+    let gicd_start: *mut u64 = gicd_virt_addr as _; // 0x08000000
+    let gicr_start: *mut u64 = gicr_virt_addr as _; // 0x080A0000
 
-    // TODO: allocate gicd and gicr to virtualmem
     irq::init_gic(gicd_start, gicr_start).expect("Failed to initialize GIC");
     // irq::init_gic(0x08000000 as _, 0x080A0000 as _).expect("Failed to initialize GIC");
+}
+
+pub fn init_drivers() {
+    init_device_tree();
+    init_uart();
+    init_gicv3();
 }
 
 pub fn init_irq() {

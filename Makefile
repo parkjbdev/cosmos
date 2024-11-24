@@ -25,14 +25,16 @@ run: ${DISK_IMG} ${KERNEL}
 		-drive if=virtio,format=${DISK_FORMAT},file=${DISK_IMG}          \
 		-nographic -serial mon:stdio
 
-lldb: ${DISK_IMG} ${KERNEL}
+dbg: ${DISK_IMG} ${KERNEL}
 	@qemu-system-aarch64 \
 		-machine virt,gic-version=3,virtualization=true  \
 		-cpu ${CPU} -smp ${CPU_CORE} -m ${RAM_SIZE}           \
 		-semihosting \
 		-kernel ${KERNEL} \
 		-drive if=virtio,format=${DISK_FORMAT},file=${DISK_IMG}          \
-		-nographic -serial mon:stdio -s -S &
+		-nographic -serial mon:stdio -s -S
+
+lldb:
 	lldb -o "gdb-remote localhost:1234" ${KERNEL}
 
 ${DTB_NAME}.dtb:

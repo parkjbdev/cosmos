@@ -24,21 +24,36 @@ pub mod sync;
 
 extern crate log as log_crate;
 use crate::arch::exception::el::get_current_el;
-use core::alloc::Layout;
-use log_crate::{error, info};
+use arch::memory::mmu::print_stat;
+use core::{alloc::Layout, arch::asm};
+use log_crate::info;
 
 #[no_mangle]
 pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // Initialize Exceptions
     arch::irq::irq_disable();
+    arch::exception::set_exception_handler();
 
-    // Initialize BSP (mmio)
-    bsp::init();
-
-    // Initialize Logger
     console::log::init();
 
-    arch::exception::init();
+    let phys_kernel_tables_base_addr = match memory::kernel_mapper::kernel_map_binary() {
+        Err(string) => panic!("Error mapping kernel binary: {}", string),
+        Ok(addr) => addr,
+    };
+    __println!("{}", phys_kernel_tables_base_addr);
+
+    if let Err(e) = memory::mmu::init(phys_kernel_tables_base_addr) {
+        panic!("Enabling MMU failed: {}", e);
+    }
+
+    __println!("Initializing Allocator");
+    memory::mmu::init_mmio_allocator();
+    __println!("Allocator Initialization Successful");
+
+    // Initialize BSP (mmio)
+    __println!("Initializing Drivers");
+    bsp::init_drivers();
+    __println!("Driver Initialization Successful");
 
     // Initialize Interrupts
     bsp::init_irq();
@@ -56,24 +71,14 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     println!("   \\___/\\____/____/_/ /_/ /_/\\____/____/  v{}", ver);
     println!();
 
-    // CPU & RAM Info
-    info!("RAM Info: ");
-    arch::memory::print_ram_info();
+    // // CPU & RAM Info
+    // info!("CPU Count: {} CPUs", arch::get_cpus());
+    // info!("RAM Info: ");
+    // arch::memory::print_ram_info();
 
     info!("Current Page Size: {}", arch::memory::get_page_size());
 
-    // let phys_kernel_tables_base_addr = match memory::kernel_mapper::kernel_map_binary() {
-    //     Err(string) => panic!("Error mapping kernel binary: {}", string),
-    //     Ok(addr) => addr,
-    // };
-
-    // info!("Kernel binary mapped at: {}", phys_kernel_tables_base_addr);
-
-    // if let Err(e) = memory::mmu::init(phys_kernel_tables_base_addr) {
-    //     panic!("Enabling MMU failed: {}", e);
-    // }
-
-    // memory::mmu::post_init();
+    print_stat();
 
     info!("Timer Status: ");
     arch::timer::print_timer_status();
@@ -81,8 +86,6 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
         "Timer Resolution: {}ns",
         arch::timer::resolution().as_nanos()
     );
-
-    info!("CPU Count: {} CPUs", arch::get_cpus());
 
     // info!("Testing Exceptions");
     // arch::test::exception::test_segfault();
@@ -115,13 +118,37 @@ fn handle_alloc_error(_layout: Layout) -> ! {
 
 #[panic_handler]
 fn handle_panic(info: &core::panic::PanicInfo<'_>) -> ! {
-    error!("KERNEL PANIC: {}", info.message());
+    __println!("************************************************");
+    __println!("KERNEL PANIC: {}", info.message());
     let (file, line, column) = match info.location() {
         Some(location) => (location.file(), location.line(), location.column()),
         None => ("unknown", 0, 0),
     };
 
-    error!("{}:{}:{}", file, line, column);
+    __println!("{}:{}:{}", file, line, column);
+    __println!("************************************************");
 
-    loop {}
+    #[repr(C)]
+    struct QEMUParameterBlock {
+        arg0: u64,
+        arg1: u64,
+    }
+
+    let block = &QEMUParameterBlock {
+        arg0: 0x20026,
+        arg1: 1,
+    };
+
+    unsafe {
+        asm!(
+            "hlt #0xF000",
+            in("x0") 0x18,
+            in("x1") block as *const _ as u64,
+            options(nostack)
+        );
+    }
+
+    loop {
+        unsafe { asm!("wfe", options(nomem, nostack)) };
+    }
 }

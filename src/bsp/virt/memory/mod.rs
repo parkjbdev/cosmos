@@ -1,14 +1,18 @@
 pub mod symbols;
 
+use core::num::NonZeroUsize;
+
 use crate::{
+    bsp,
     memory::{
         address_space::{AddressSpace, AssociatedTranslationTable},
+        align::{align_down, align_up},
         kernel_mapper::kernel_map_at,
+        mmu::page_alloc::kernel_va_allocator,
         types::*,
     },
     sync::null_lock::NullLock,
 };
-use log_crate::info;
 
 type KernelTranslationTable =
     <KernelVirtAddrSpace as AssociatedTranslationTable>::TableStartFromBottom;
@@ -26,9 +30,11 @@ pub fn kernel_tables() -> &'static NullLock<KernelTranslationTable> {
 }
 
 fn virtual_region_of(start_addr: usize, end_addr: usize) -> MemoryRegion<Virtual> {
-    let text_page_count = (end_addr - start_addr) >> KernelGranule::SHIFT;
+    let page_cnt = (end_addr - start_addr) >> KernelGranule::SHIFT;
+
     let start_page: PageAddress<Virtual> = PageAddress::from(start_addr);
-    let end_page = start_page.offset(text_page_count as isize).unwrap();
+    let end_page = start_page.offset(page_cnt as isize).unwrap();
+
     MemoryRegion::<Virtual>::new(start_page, end_page)
 }
 
@@ -39,23 +45,55 @@ fn physical_region_of(virt_region: MemoryRegion<Virtual>) -> MemoryRegion<Physic
     )
 }
 
+pub fn kernel_map_mmio(
+    name: &'static str,
+    start_addr: Address<Physical>,
+    end_addr: Address<Physical>,
+) -> Address<Virtual> {
+    let start_addr = start_addr.align_down_page();
+    let end_addr = end_addr.align_up_page();
+
+    let start_page = PageAddress::from(start_addr);
+    let end_page = PageAddress::from(end_addr);
+
+    let offset = usize::from(start_addr) & KernelGranule::MASK;
+
+    let phys_region = MemoryRegion::<Physical>::new(start_page, end_page);
+    let num_pages = NonZeroUsize::new(usize::from(end_addr - start_addr) >> KernelGranule::SHIFT)
+        .expect("num_pages are not NonZero");
+
+    let virt_region = kernel_va_allocator().lock().alloc(num_pages).unwrap();
+
+    kernel_map_at(
+        name,
+        &virt_region,
+        &phys_region,
+        &AttributeFields {
+            memory_attributes: MemoryAttributes::Device,
+            access_permissions: AccessPermissions::RW,
+        },
+    );
+
+    virt_region.start_addr() + Address::<Virtual>::new(offset)
+}
+
 pub(crate) fn kernel_map_binary() -> Result<(), &'static str> {
-    let virt_region = virtual_region_of(0, 0x4010_0000);
+    let (start_addr, end_addr) = (0x4000_0000, 0x4010_0000);
+    let virt_region = virtual_region_of(start_addr, end_addr);
     let phys_region = physical_region_of(virt_region);
-    info!("      {: <15}: [{:#x} ~ {:#x}]", "mmio", 0, 0x4010_0000);
-    kernel_map_at("MMIO", &virt_region, &phys_region, &AttributeFields {
-        access_permissions: AccessPermissions::RO,
-        memory_attributes: MemoryAttributes::Device,
-    });
+    kernel_map_at(
+        "Kernel .devicetree Section",
+        &virt_region,
+        &phys_region,
+        &AttributeFields {
+            memory_attributes: MemoryAttributes::CacheableDRAM,
+            access_permissions: AccessPermissions::RO,
+        },
+    );
 
     let (start_addr, end_addr) = self::symbols::text();
     let virt_region = virtual_region_of(start_addr, end_addr);
     let phys_region = physical_region_of(virt_region);
-    info!(
-        "      {: <15}: [{:#x} ~ {:#x}]",
-        ".text", start_addr, end_addr
-    );
-
     kernel_map_at(
         "Kernel .text Section",
         &virt_region,
@@ -69,11 +107,6 @@ pub(crate) fn kernel_map_binary() -> Result<(), &'static str> {
     let (start_addr, end_addr) = self::symbols::rodata();
     let virt_region = virtual_region_of(start_addr, end_addr);
     let phys_region = physical_region_of(virt_region);
-    info!(
-        "      {: <15}: [{:#x} ~ {:#x}]",
-        ".rodata", start_addr, end_addr
-    );
-
     kernel_map_at(
         "Kernel .rodata Section",
         &virt_region,
@@ -87,11 +120,6 @@ pub(crate) fn kernel_map_binary() -> Result<(), &'static str> {
     let (start_addr, end_addr) = self::symbols::data();
     let virt_region = virtual_region_of(start_addr, end_addr);
     let phys_region = physical_region_of(virt_region);
-    info!(
-        "      {: <15}: [{:#x} ~ {:#x}]",
-        ".data", start_addr, end_addr
-    );
-
     kernel_map_at(
         "Kernel .data Section",
         &virt_region,
@@ -105,11 +133,6 @@ pub(crate) fn kernel_map_binary() -> Result<(), &'static str> {
     let (start_addr, end_addr) = self::symbols::bss();
     let virt_region = virtual_region_of(start_addr, end_addr);
     let phys_region = physical_region_of(virt_region);
-    info!(
-        "      {: <15}: [{:#x} ~ {:#x}]",
-        ".bss", start_addr, end_addr
-    );
-
     kernel_map_at(
         "Kernel .bss Section",
         &virt_region,
@@ -123,11 +146,6 @@ pub(crate) fn kernel_map_binary() -> Result<(), &'static str> {
     let (start_addr, end_addr) = self::symbols::boot_core_stack();
     let virt_region = virtual_region_of(start_addr, end_addr);
     let phys_region = physical_region_of(virt_region);
-    info!(
-        "      {: <15}: [{:#x} ~ {:#x}]",
-        "bootcore", start_addr, end_addr
-    );
-
     kernel_map_at(
         "Kernel bootcore stack Section",
         &virt_region,

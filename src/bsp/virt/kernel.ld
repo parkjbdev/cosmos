@@ -1,12 +1,12 @@
 OUTPUT_FORMAT("elf64-littleaarch64")
 OUTPUT_ARCH("aarch64")
 
-PAGE_SIZE = 64K;
-PAGE_MASK = PAGE_SIZE - 1;
+__PAGE_SIZE_ = 64K;
+__PAGE_MASK_ = __PAGE_SIZE_ - 1;
 
 ENTRY(_start)
 /* Qemu Device Tree Blob is 1MB */
-kernel_start = 0x40100000;
+__kernel_start_ = 0x40100000;
 
 PHDRS
 {
@@ -17,62 +17,71 @@ PHDRS
 
 SECTIONS
 {
-  . = kernel_start;
-  . = ALIGN(PAGE_SIZE);
-  __text_start = .;
+  . = __kernel_start_;
+  __text_start_ = .;
   .text : ALIGN(8) {
     KEEP(*(.text._start))
     *(.text._start_cosmos)
     *(.text*)
     . = ALIGN(8);
   } :segment_rx
-  . = ALIGN(PAGE_SIZE);
-  __text_end = .;
+  . = ALIGN(__PAGE_SIZE_);
+  __text_end_ = .;
 
-  __rodata_start = .;
+  __rodata_start_ = .;
   .rodata : ALIGN(8) {
     *(.rodata)
     *(.rodata.*)
   } :segment_ro
-  . = ALIGN(PAGE_SIZE);
-  __rodata_end = .;
+  . = ALIGN(__PAGE_SIZE_);
+  __rodata_end_ = .;
 
   /***********************************************************************************************
   * Data and BSS
   * **********************************************************************************************/
 
-  __data_start = .;
+  __data_start_ = .;
   .data   : ALIGN(8) {
     *(.data)
     *(.data.*)
   } :segment_rw
-  . = ALIGN(PAGE_SIZE);
-  __data_end = .;
+  . = ALIGN(__PAGE_SIZE_);
+  __data_end_ = .;
 
-  __bss_start = .;
+  __bss_start_ = .;
   .bss (NOLOAD)    : ALIGN(16) {
     *(.bss)
     *(.bss.*)
     . = ALIGN(16);
   } :segment_rw
-  . = ALIGN(PAGE_SIZE);
-  __bss_end = .;
+  . = ALIGN(__PAGE_SIZE_);
+  __bss_end_ = .;
 
   .got    : ALIGN(8) {
        /* Global offset table Todo */
     *(.got)
   } :segment_ro
   ASSERT(SIZEOF(.got) == 0, "Relocation Not Supported")
-  . = ALIGN(PAGE_SIZE);
+  . = ALIGN(__PAGE_SIZE_);
 
   /***********************************************************************************************
    * Boot Core Stack
    ***********************************************************************************************/
-  __boot_core_stack_start = .;         /*   ^             */ 
+  __boot_core_stack_start_ = .;         /*   ^             */ 
                                        /*   | stack       */
-  . += 16K;                            /*   | growth      */
+  . += 1M;                          /*   | growth      */
                                        /*   | direction   */
-  . = ALIGN(PAGE_SIZE);                /*   |             */
-  __boot_core_stack_end = .;           /*   |             */
-  kernel_end = .;
+  . = ALIGN(__PAGE_SIZE_);                /*   |             */
+  __boot_core_stack_end_ = .;           /*   |             */
+
+  __mmio_remap_start_ = .;
+  . += 1024M; /* 0x00000000 to 0x40000000 */
+  __mmio_remap_end_ = .;
+
+  /DISCARD/ : {
+      *(.debug*)
+      *(.zdebug*)
+  }
+
+  __kernel_end_ = .;
 }
