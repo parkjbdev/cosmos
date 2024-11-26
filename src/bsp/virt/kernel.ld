@@ -78,10 +78,19 @@ SECTIONS
   . += 1024M; /* 0x00000000 to 0x40000000 */
   __mmio_remap_end_ = .;
 
-  /DISCARD/ : {
-      *(.debug*)
-      *(.zdebug*)
-  }
-
   __kernel_end_ = .;
+
+  /* 디버그 섹션들을 유지 */
+    .debug_info 0 : { *(.debug_info) }
+    .debug_abbrev 0 : { *(.debug_abbrev) }
+    .debug_line 0 : { *(.debug_line) }
+    .debug_str 0 : { *(.debug_str) }
+
+    /* 또는 /DISCARD/에서 디버그 섹션을 제외 */
+    /DISCARD/ : {
+        *(.note.GNU-stack)
+        *(.note.gnu.property)
+        /* 디버그 섹션은 제외 */
+        /* *(.debug*) */
+    }
 }

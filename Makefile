@@ -10,6 +10,9 @@ DISK_SIZE := 8G
 
 DTB_NAME := qemu
 
+build: ${DISK_IMG}
+	cargo build
+
 ${KERNEL}: 
 	cargo build
 
@@ -26,7 +29,7 @@ run: ${DISK_IMG} ${KERNEL}
 		-nographic -serial mon:stdio
 
 dbg: ${DISK_IMG} ${KERNEL}
-	@qemu-system-aarch64 \
+	qemu-system-aarch64 \
 		-machine virt,gic-version=3,virtualization=true  \
 		-cpu ${CPU} -smp ${CPU_CORE} -m ${RAM_SIZE}           \
 		-semihosting \

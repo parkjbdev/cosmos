@@ -2,8 +2,7 @@
 target = "aarch64-unknown-none-softfloat"
 
 [target.'cfg(target_arch="aarch64")']
-# rustflags = ["-Clink-arg=-Tsrc/arch/aarch64/kernel.ld"]
-rustflags = ["-Clink-arg=-Tsrc/bsp/virt/kernel.ld", "-Cdebuginfo=2", "-Copt-level=0"]
+rustflags = ["-Clink-arg=-Tsrc/bsp/virt/kernel.ld", "-g", "-Copt-level=0"]
 
 [unstable]
 build-std = ["core", "alloc"]
