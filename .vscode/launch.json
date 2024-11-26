@@ -17,40 +17,5 @@
             "stopAtEntry": false,
             "externalConsole": true,
         },
-        // {
-        //     "name": "(gdb) Debug2",
-        //     "type": "gdb",
-        //     "request": "attach",
-        //     "executable": "${workspaceRoot}/target/aarch64-unknown-none-softfloat/debug/cosmos",
-        //     "target": "localhost:1234",
-        //     "remote": true,
-        //     "cwd": "${workspaceRoot}",
-        //     "gdbpath": "aarch64-elf-gdb",
-        //     "preLaunchTask": "build",
-        //     "qemuPath": "qemu-system-aarch64",
-        //     "qemuArgs": [
-        //         "-machine", "virt,gic-version=3,virtualization=true",
-        //         "-cpu", "cortex-a76",
-        //         "-smp", "1",
-        //         "-m", "8G",
-        //         "-semihosting",
-        //         "-kernel", "${workspaceRoot}/target/aarch64-unknown-none-softfloat/debug/cosmos",
-        //         "-drive", "if=virtio,format=qcow2,file=disk.img",
-        //         "-nographic",
-        //         "-serial", "mon:stdio",
-        //         "-s",
-        //         "-S"
-        //     ]
-        // }
-//         {
-//             "name": "(gdb) Qemu",
-//             "type": "gdb",
-//         }
-
-// qemu-gdb-debug.startQemuCommand: QEMU start command (Example: qemu-system-i386 -s -S -drive file=image.elf,index=0,if=floppy,format=raw)
-// qemu-gdb-debug.stopQemuCommand: QEMU stop command (can be omitted for not stopping) (Example: pkill -f qemu-system-i386)
-// qemu-gdb-debug.serverAddress: GDB server address (localhost:1234 by default in QEMU) (Example: localhost:1234)
-// qemu-gdb-debug.gdbPath: GDB path (Example: /usr/bin/gdb)
-// qemu-gdb-debug.executablePath: Executable path (generally same as the one QEMU runs) (Example: ${workspaceFolder}/bin/kernel.elf)
     ]
 }
