@@ -1,6 +1,6 @@
+use super::address::{Address, AddressType};
 use crate::bsp;
 use core::{fmt::Display, iter::Step};
-use super::address::{Address, AddressType};
 
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug, Eq, PartialOrd, PartialEq)]
@@ -16,9 +16,7 @@ impl<T: AddressType> Display for PageAddress<T> {
 
 impl<T: AddressType> PageAddress<T> {
     pub fn new(addr: Address<T>) -> Self {
-        Self {
-            inner: addr
-        }
+        Self { inner: addr }
     }
     pub fn inner(&self) -> Address<T> {
         self.inner
@@ -50,6 +48,10 @@ impl<T: AddressType> PageAddress<T> {
 
 impl<T: AddressType> From<Address<T>> for PageAddress<T> {
     fn from(address: Address<T>) -> Self {
+        assert!(
+            crate::memory::align::is_aligned(address.into(), bsp::memory::KernelGranule::SIZE),
+            "Input usize not page aligned"
+        );
         Self { inner: address }
     }
 }
@@ -57,7 +59,7 @@ impl<T: AddressType> From<Address<T>> for PageAddress<T> {
 impl<T: AddressType> From<usize> for PageAddress<T> {
     fn from(addr: usize) -> Self {
         assert!(
-            super::super::align::is_aligned(addr, bsp::memory::KernelGranule::SIZE),
+            crate::memory::align::is_aligned(addr, bsp::memory::KernelGranule::SIZE),
             "Input usize not page aligned"
         );
 
@@ -68,7 +70,16 @@ impl<T: AddressType> From<usize> for PageAddress<T> {
 }
 
 impl<T: AddressType> Step for PageAddress<T> {
-    fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+    // fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+    //     if start > end {
+    //         return None;
+    //     }
+
+    //     // Since start <= end, do unchecked arithmetic.
+    //     Some((end.value() - start.value()) >> bsp::memory::KernelGranule::SHIFT)
+    // }
+
+    fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
         if start > end {
             return None;
         }

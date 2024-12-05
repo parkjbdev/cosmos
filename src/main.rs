@@ -2,11 +2,11 @@
 #![allow(dead_code)]
 #![allow(incomplete_features)]
 #![feature(alloc_error_handler)]
-#![feature(exposed_provenance)]
 #![feature(fn_align)]
 #![feature(naked_functions)]
 #![feature(slice_as_chunks)]
-#![feature(strict_provenance)]
+// #![feature(exposed_provenance)]
+// #![feature(strict_provenance)]
 #![feature(generic_const_exprs)]
 #![feature(step_trait)]
 #![no_main]
@@ -27,6 +27,7 @@ use crate::arch::exception::el::get_current_el;
 use arch::memory::mmu::print_stat;
 use core::{alloc::Layout, arch::asm};
 use log_crate::info;
+use bsp::memory::symbols;
 
 #[no_mangle]
 pub(crate) unsafe extern "C" fn kernel_main() -> ! {
@@ -40,7 +41,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
         Err(string) => panic!("Error mapping kernel binary: {}", string),
         Ok(addr) => addr,
     };
-    __println!("{}", phys_kernel_tables_base_addr);
+    __println!("{:#x} {:#x}", symbols::kernel().0, symbols::kernel().1);
 
     if let Err(e) = memory::mmu::init(phys_kernel_tables_base_addr) {
         panic!("Enabling MMU failed: {}", e);

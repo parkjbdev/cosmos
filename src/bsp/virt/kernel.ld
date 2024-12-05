@@ -6,7 +6,7 @@ __PAGE_MASK_ = __PAGE_SIZE_ - 1;
 
 ENTRY(_start)
 /* Qemu Device Tree Blob is 1MB */
-__kernel_start_ = 0x40100000;
+__kernel_start_ = 0x40000000;
 
 PHDRS
 {
@@ -18,18 +18,19 @@ PHDRS
 SECTIONS
 {
   . = __kernel_start_;
+  . += 1M;
   __text_start_ = .;
-  .text : ALIGN(8) {
+  .text : ALIGN(65536) {
     KEEP(*(.text._start))
     *(.text._start_cosmos)
     *(.text*)
-    . = ALIGN(8);
+    . = ALIGN(65536);
   } :segment_rx
   . = ALIGN(__PAGE_SIZE_);
   __text_end_ = .;
 
   __rodata_start_ = .;
-  .rodata : ALIGN(8) {
+  .rodata : ALIGN(65536) {
     *(.rodata)
     *(.rodata.*)
   } :segment_ro
@@ -41,7 +42,7 @@ SECTIONS
   * **********************************************************************************************/
 
   __data_start_ = .;
-  .data   : ALIGN(8) {
+  .data   : ALIGN(65536) {
     *(.data)
     *(.data.*)
   } :segment_rw
@@ -57,7 +58,7 @@ SECTIONS
   . = ALIGN(__PAGE_SIZE_);
   __bss_end_ = .;
 
-  .got    : ALIGN(8) {
+  .got    : ALIGN(65536) {
        /* Global offset table Todo */
     *(.got)
   } :segment_ro
@@ -77,6 +78,10 @@ SECTIONS
   __mmio_remap_start_ = .;
   . += 1024M; /* 0x00000000 to 0x40000000 */
   __mmio_remap_end_ = .;
+
+  . = ALIGN(__PAGE_SIZE_);
+  . += 2048M;
+  . = ALIGN(__PAGE_SIZE_);
 
   __kernel_end_ = .;
 

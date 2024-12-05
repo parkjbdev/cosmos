@@ -34,9 +34,9 @@ extern "C" fn handle_el1t_err(state: &ExceptionState) -> *mut usize {
 // This means that `SPSel` holds the value 1 and this is the mode that we are currently using
 #[no_mangle]
 extern "C" fn handle_el1h_sync(state: &mut ExceptionState) -> *mut usize {
-    println!("\n*** HANDLE_EL1H_SYNC ExceptionState ***");
-    println!("FAR_EL1: {:#018x}", FAR_EL1.get());
-    println!("{}", state);
+    FAR_EL1.set(0);
+    state.elr_el1 += 4;
+    return core::ptr::null_mut();
 
     // // Surviving from test_segfault
     // if FAR_EL1.get() == 8 * 1024 * 1024 * 1024 {

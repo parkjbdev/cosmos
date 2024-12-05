@@ -1,13 +1,15 @@
 pub mod descriptors;
+pub mod mair;
 pub mod translation_table;
 
 use crate::bsp::memory::symbols;
 use crate::memory::types::*;
 use crate::memory::{self, mmu::error::MMUEnableError};
-use aarch64_cpu::registers::ID_AA64MMFR0_EL1;
 use aarch64_cpu::{asm::barrier, registers::*};
 use log::info;
 use tock_registers::interfaces::{ReadWriteable, Readable};
+// use crate::sync::null_lock::NullLock;
+use core::arch::asm;
 
 pub(super) static MMU: MemoryManagementUnit = MemoryManagementUnit;
 
@@ -28,12 +30,19 @@ impl memory::mmu::interface::MMU for MemoryManagementUnit {
         // Set Kernel Table physical base address to TTBR0_EL1
         TTBR0_EL1.set_baddr(phys_table_baddr.value() as u64);
 
+        // let tt = unsafe {
+        //     sptr::from_exposed_addr::<NullLock<KernelTranslationTable>>(
+        //         (TTBR0_EL1.read(TTBR0_EL1::BADDR) << 1) as usize,
+        //     )
+        //     .as_ref()
+        // }
+        // .unwrap();
+
         // Configure Translation Control
         // Configure various settings of stage 1 of the EL1 translation regime.
-        let t0sz = (64 - 32) as u64; // means 4GB cause 4G = 2**22
-        // let t0sz = 16;
+        let t0sz = 16;
 
-        // // Enable TTBR0 and TTBR1 walks, page size = 4K, vaddr size = 48 bits, paddr size = 40 bits.
+        // Enable TTBR0 and TTBR1 walks, page size = 4K, vaddr size = 48 bits, paddr size = 40 bits.
         // let tcr_flags0 = TCR_EL1::EPD0::EnableTTBR0Walks
         //     + TCR_EL1::TG0::KiB_64
         //     + TCR_EL1::SH0::Inner
@@ -44,37 +53,54 @@ impl memory::mmu::interface::MMU for MemoryManagementUnit {
         //     + TCR_EL1::TG1::KiB_64
         //     + TCR_EL1::SH1::Inner
         //     + TCR_EL1::ORGN1::WriteBack_ReadAlloc_WriteAlloc_Cacheable
-        //     + TCR_EL1::IRGN1::WriteBack_ReadAlloc_WriteAlloc_CacheableC
+        //     + TCR_EL1::IRGN1::WriteBack_ReadAlloc_WriteAlloc_Cacheable
         //     + TCR_EL1::T1SZ.val(16);
 
         // TCR_EL1.write(TCR_EL1::IPS::Bits_48 + tcr_flags0 + tcr_flags1);
 
         TCR_EL1.write(
-            // Top Byte ignored
-            TCR_EL1::TBI0::Used
+            // 64 KiB granule
+            TCR_EL1::TG0::KiB_64
+                // Top Byte ignored
+                + TCR_EL1::TBI0::Used
                 // Intermediate Physical Address Size
-                + TCR_EL1::IPS::Bits_40
+                + TCR_EL1::IPS::Bits_48
+                // + TCR_EL1::IPS::Bits_40
                 // Sharability attribute
-                + TCR_EL1::SH0::Inner 
+                + TCR_EL1::SH0::Inner
                 // Inner Cacheability attribute
-                + TCR_EL1::ORGN0::WriteBack_ReadAlloc_WriteAlloc_Cacheable 
+                + TCR_EL1::ORGN0::WriteBack_ReadAlloc_WriteAlloc_Cacheable
                 // Outer Cacheability attribute
-                + TCR_EL1::IRGN0::WriteBack_ReadAlloc_WriteAlloc_Cacheable 
+                + TCR_EL1::IRGN0::WriteBack_ReadAlloc_WriteAlloc_Cacheable
                 + TCR_EL1::EPD0::EnableTTBR0Walks
+                + TCR_EL1::EPD1::DisableTTBR1Walks
                 + TCR_EL1::A1::TTBR0
                 + TCR_EL1::T0SZ.val(t0sz)
-                + TCR_EL1::EPD1::DisableTTBR1Walks,
+                + TCR_EL1::HA::Enable // Allow the MMU to update the ACCESSED flag.
+                + TCR_EL1::HD::Enable, // Allow the MMU to update the DIRTY flag.
         );
 
         barrier::dsb(barrier::ISHST);
         barrier::isb(barrier::SY);
 
-        // Enable the MMU and turn on data and instruction caching.
-        SCTLR_EL1.modify(
-            SCTLR_EL1::M::Enable + // MMU enable for EL1 and EL0 stage 1 address translation.
+        unsafe {
+            asm!(
+                "isb
+                tlbi vmalle1
+                ic iallu
+                dsb nsh
+                isb"
+            );
+        }
+        __println!("Enabling MMU...");
+
+        let sctlr_el1 = SCTLR_EL1::M::Enable + // MMU enable for EL1 and EL0 stage 1 address translation.
+            SCTLR_EL1::A::Enable +
             SCTLR_EL1::C::Cacheable + // Cacheability control, for data accesses.
-            SCTLR_EL1::I::Cacheable, // Instruction access Cacheability control, for accesses at EL0 and EL1
-        );
+            SCTLR_EL1::I::Cacheable; // Instruction access Cacheability control, for accesses at EL0 and EL1
+
+        // Enable the MMU and turn on data and instruction caching.
+        SCTLR_EL1.modify(sctlr_el1);
 
         barrier::dsb(barrier::ISH);
         barrier::isb(barrier::SY);

@@ -3,10 +3,8 @@ pub mod symbols;
 use core::num::NonZeroUsize;
 
 use crate::{
-    bsp,
     memory::{
         address_space::{AddressSpace, AssociatedTranslationTable},
-        align::{align_down, align_up},
         kernel_mapper::kernel_map_at,
         mmu::page_alloc::kernel_va_allocator,
         types::*,
@@ -14,13 +12,14 @@ use crate::{
     sync::null_lock::NullLock,
 };
 
-type KernelTranslationTable =
+pub type KernelTranslationTable =
     <KernelVirtAddrSpace as AssociatedTranslationTable>::TableStartFromBottom;
 
 // 64 KiB granule size
 pub type KernelGranule = TranslationGranule<{ 64 * 1024 }>;
-// 16 GiB address space
-pub type KernelVirtAddrSpace = AddressSpace<{ 1 << 34 }>;
+// 4 GiB address space
+// pub type KernelVirtAddrSpace = AddressSpace<{ 2 << 30 }>;
+pub type KernelVirtAddrSpace = AddressSpace<{ 1 << 48 }>;
 
 pub static KERNEL_TABLES: NullLock<KernelTranslationTable> =
     NullLock::new(KernelTranslationTable::new());
@@ -77,7 +76,7 @@ pub fn kernel_map_mmio(
     virt_region.start_addr() + Address::<Virtual>::new(offset)
 }
 
-pub(crate) fn kernel_map_binary() -> Result<(), &'static str> {
+pub(crate) fn kernel_map_sections() -> Result<(), &'static str> {
     let (start_addr, end_addr) = (0x4000_0000, 0x4010_0000);
     let virt_region = virtual_region_of(start_addr, end_addr);
     let phys_region = physical_region_of(virt_region);

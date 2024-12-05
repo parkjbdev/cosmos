@@ -1,6 +1,6 @@
 CPU := cortex-a76
 CPU_CORE := 1
-RAM_SIZE := 8G 
+RAM_SIZE := 16G
 
 KERNEL := ./target/aarch64-unknown-none-softfloat/debug/cosmos
 
@@ -13,13 +13,16 @@ DTB_NAME := qemu
 build: ${DISK_IMG}
 	cargo build
 
-${KERNEL}: 
+silent-build: ${DISK_IMG}
+	@cargo build > /dev/null 2>&1
+
+${KERNEL}:
 	cargo build
 
 ${DISK_IMG}:
 	qemu-img create -f ${DISK_FORMAT} ${DISK_IMG} ${DISK_SIZE}
 
-run: ${DISK_IMG} ${KERNEL}
+run: silent-build ${DISK_IMG} ${KERNEL}
 	@qemu-system-aarch64 \
 		-machine virt,gic-version=3,virtualization=true  \
 		-cpu ${CPU} -smp ${CPU_CORE} -m ${RAM_SIZE}           \
@@ -54,7 +57,7 @@ dts: ${DTB_NAME}.dtb
 	dtc -I dtb -O dts ${DTB_NAME}.dtb -o ${DTB_NAME}.dts
 	cat ${DTB_NAME}.dts
 
-clean: 
+clean:
 	rm -rf target/
 	rm ${DISK_IMG}
 

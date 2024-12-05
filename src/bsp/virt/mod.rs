@@ -7,48 +7,29 @@ pub mod memory;
 
 fn init_device_tree() {
     __println!("Initializing DeviceTree");
-
     devicetree::init(0x4000_0000);
-
-    // // Initialize Device Tree
-    // let device_tree_start: usize = 0x4000_0000;
-    // let device_tree_end: usize = 0x4001_0000;
-
-    // let virt_addr = memory::kernel_map_mmio(
-    //     "DEVICE TREE",
-    //     device_tree_start.into(),
-    //     device_tree_end.into(),
-    // );
-
-    // // dbg!("virt_addr of device_tree: {}", virt_addr);
-    // dbg!(virt_addr);
-
-    // devicetree::init(virt_addr.into());
-
     __println!("DeviceTree Initialization Successful");
 }
 
 fn init_uart() {
     // Initialize UART
     __println!("Initializing PL011 UART");
-    let uart_addr_start: usize = {
-        let stdout = devicetree::get_property("/chosen", "stdout-path").unwrap();
-        __println!("{:?}", stdout);
-        core::str::from_utf8(stdout)
-            .unwrap()
-            .trim_matches(char::from(0))
-            .split_once('@')
-            .map(|(_, addr)| u32::from_str_radix(addr, 16).unwrap())
-            .unwrap()
-    } as usize; // 0x09000000
-    __println!("{:#x}", uart_addr_start);
+    // let uart_addr_start: usize = {
+    //     let stdout = devicetree::get_property("/chosen", "stdout-path").unwrap();
+    //     core::str::from_utf8(stdout)
+    //         .unwrap()
+    //         .trim_matches(char::from(0))
+    //         .split_once('@')
+    //         .map(|(_, addr)| u32::from_str_radix(addr, 16).unwrap())
+    //         .unwrap()
+    // } as usize; // 0x09000000
 
     let uart_addr_start = 0x0900_0000;
     let uart_addr_end: usize = uart_addr_start + 0x1000;
 
     let virt_addr =
         memory::kernel_map_mmio("PL011 UART", uart_addr_start.into(), uart_addr_end.into());
-    __println!("{}", virt_addr);
+    __println!("virt_addr: {}", virt_addr);
 
     pl011::init(virt_addr.into());
     register_console(PL011_UART.get().unwrap());

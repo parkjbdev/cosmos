@@ -14,22 +14,35 @@
       "command": "make build"
     },
     {
-        "label": "clean build",
-        "type": "shell",
-        "command": ["make build"],
-        "dependsOn": ["clean"]
+      "label": "clean build",
+      "type": "shell",
+      "command": [
+        "make build"
+      ],
+      "dependsOn": [
+        "clean"
+      ]
     },
     {
       "label": "run",
       "type": "shell",
-      "command": ["make run"],
-      "dependsOn": ["build"]
+      "command": [
+        "make run"
+      ],
+      "dependsOn": [
+        "build"
+      ],
+      "problemMatcher": []
     },
     {
       "label": "debug",
       "type": "shell",
-      "command": ["make dbg"],
-      "dependsOn": ["build"],
+      "command": [
+        "make dbg"
+      ],
+      "dependsOn": [
+        "build"
+      ],
       "isBackground": true,
       "problemMatcher": [
         {

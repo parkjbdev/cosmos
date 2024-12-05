@@ -7,11 +7,10 @@ use core::{
     ops::Range,
 };
 
-#[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug, Eq, PartialOrd, PartialEq)]
-pub struct MemoryRegion<ADDRESS_TYPE: AddressType> {
-    start: PageAddress<ADDRESS_TYPE>,
-    end: PageAddress<ADDRESS_TYPE>,
+pub struct MemoryRegion<T: AddressType> {
+    start: PageAddress<T>,
+    end: PageAddress<T>,
 }
 
 #[allow(non_camel_case_types)]
@@ -35,6 +34,13 @@ impl<T: AddressType> MemoryRegion<T> {
 
     pub fn end_page_addr(&self) -> PageAddress<T> {
         self.end
+    }
+
+    pub fn set_start_page(&mut self, start: PageAddress<T>) {
+        self.start = start;
+    }
+    pub fn set_end_page(&mut self, end: PageAddress<T>) {
+        self.end = end;
     }
 
     pub fn size(&self) -> MemorySize {

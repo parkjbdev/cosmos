@@ -6,15 +6,19 @@ pub fn kernel_map_binary() -> Result<Address<Physical>, &'static str> {
     let phys_kernel_tables_baddr = bsp::memory::kernel_tables().lock(|table| {
         table.init();
         table.phys_base_addr()
-    });
+    }).unwrap();
 
     __println!("      -------------------------------------------------------------------------------------------------------------------------------------------");
     __println!(
-        "       {:<30}    {:<30}   {:^7}   {:^9}   {:^35}",
-        "Virtual", "Physical", "Size", "Attr", "Entity"
+        "       {:^32} {:^28} {:^22} {:^7} {:^35}",
+        "Virtual",
+        "Physical",
+        "Size",
+        "Attr",
+        "Entity"
     );
     __println!("      -------------------------------------------------------------------------------------------------------------------------------------------");
-    bsp::memory::kernel_map_binary()?;
+    bsp::memory::kernel_map_sections()?;
 
     __println!("      -------------------------------------------------------------------------------------------------------------------------------------------");
 
