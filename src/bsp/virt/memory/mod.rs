@@ -18,8 +18,7 @@ pub type KernelTranslationTable =
 // 64 KiB granule size
 pub type KernelGranule = TranslationGranule<{ 64 * 1024 }>;
 // 4 GiB address space
-// pub type KernelVirtAddrSpace = AddressSpace<{ 2 << 30 }>;
-pub type KernelVirtAddrSpace = AddressSpace<{ 1 << 48 }>;
+pub type KernelVirtAddrSpace = AddressSpace<{ 2 << 30 }>;
 
 pub static KERNEL_TABLES: NullLock<KernelTranslationTable> =
     NullLock::new(KernelTranslationTable::new());

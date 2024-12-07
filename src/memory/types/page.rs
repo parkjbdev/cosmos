@@ -70,22 +70,13 @@ impl<T: AddressType> From<usize> for PageAddress<T> {
 }
 
 impl<T: AddressType> Step for PageAddress<T> {
-    // fn steps_between(start: &Self, end: &Self) -> Option<usize> {
-    //     if start > end {
-    //         return None;
-    //     }
-
-    //     // Since start <= end, do unchecked arithmetic.
-    //     Some((end.value() - start.value()) >> bsp::memory::KernelGranule::SHIFT)
-    // }
-
     fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
         if start > end {
-            return None;
+            return (0, None);
         }
 
         // Since start <= end, do unchecked arithmetic.
-        Some((end.value() - start.value()) >> bsp::memory::KernelGranule::SHIFT)
+        (end.value() - start.value(), Some((end.value() - start.value()) >> bsp::memory::KernelGranule::SHIFT))
     }
 
     fn forward_checked(start: Self, count: usize) -> Option<Self> {
