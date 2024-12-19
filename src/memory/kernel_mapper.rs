@@ -1,12 +1,13 @@
 use super::translation_table::interface::TranslationTable;
+use crate::bsp;
+use crate::bsp::memory::{physical_region_of, virtual_region_of};
 use crate::memory::types::*;
-use crate::{bsp, sync::interface::Mutex};
 
-pub fn kernel_map_binary() -> Result<Address<Physical>, &'static str> {
-    let phys_kernel_tables_baddr = bsp::memory::kernel_tables().lock(|table| {
-        table.init();
-        table.phys_base_addr()
-    }).unwrap();
+pub fn kernel_map_sections() -> Result<Address<Physical>, &'static str> {
+    let mut kernel_table = bsp::memory::KERNEL_TABLES.write();
+    kernel_table.init();
+    let phys_kernel_tables_baddr = kernel_table.phys_base_addr().unwrap();
+    // kernel_table.downgrade();
 
     __println!("      -------------------------------------------------------------------------------------------------------------------------------------------");
     __println!(
@@ -18,28 +19,25 @@ pub fn kernel_map_binary() -> Result<Address<Physical>, &'static str> {
         "Entity"
     );
     __println!("      -------------------------------------------------------------------------------------------------------------------------------------------");
-    bsp::memory::kernel_map_sections()?;
+    let sections = bsp::memory::kernel_sections();
+    for section in sections.iter() {
+        let virt_region = virtual_region_of(section.range.start, section.range.end);
+        let phys_region = physical_region_of(virt_region);
+
+        kernel_table.map_at(&virt_region, &phys_region, &section.attr)?;
+
+        __println!(
+            "      {} --> {} | {} | {:<3} {} | {}",
+            virt_region,
+            phys_region,
+            virt_region.size(),
+            section.attr.memory_attributes,
+            section.attr.access_permissions,
+            section.name
+        );
+    }
 
     __println!("      -------------------------------------------------------------------------------------------------------------------------------------------");
 
     Ok(phys_kernel_tables_baddr)
-}
-
-pub fn kernel_map_at(
-    name: &'static str,
-    virt_region: &MemoryRegion<Virtual>,
-    phys_region: &MemoryRegion<Physical>,
-    attributes: &AttributeFields,
-) {
-    __println!(
-        "      {} --> {} | {} | {:<3} {} | {}",
-        virt_region,
-        phys_region,
-        virt_region.size(),
-        attributes.memory_attributes,
-        attributes.access_permissions,
-        name
-    );
-
-    bsp::memory::kernel_tables().lock(|tables| tables.map_at(virt_region, phys_region, attributes));
 }

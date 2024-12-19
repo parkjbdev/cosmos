@@ -4,4 +4,3 @@ mod virt;
 #[cfg(feature = "qemu-virt")]
 pub use virt::*;
 
-

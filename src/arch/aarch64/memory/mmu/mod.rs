@@ -2,14 +2,13 @@ pub mod descriptors;
 pub mod mair;
 pub mod translation_table;
 
-use crate::bsp::memory::symbols;
+use crate::bsp::memory::{symbols, KernelVirtAddrSpace};
 use crate::memory::types::*;
 use crate::memory::{self, mmu::error::MMUEnableError};
 use aarch64_cpu::{asm::barrier, registers::*};
+use core::arch::asm;
 use log::info;
 use tock_registers::interfaces::{ReadWriteable, Readable};
-// use crate::sync::null_lock::NullLock;
-use core::arch::asm;
 
 pub(super) static MMU: MemoryManagementUnit = MemoryManagementUnit;
 
@@ -40,7 +39,6 @@ impl memory::mmu::interface::MMU for MemoryManagementUnit {
 
         // Configure Translation Control
         // Configure various settings of stage 1 of the EL1 translation regime.
-        let t0sz = 16;
 
         // Enable TTBR0 and TTBR1 walks, page size = 4K, vaddr size = 48 bits, paddr size = 40 bits.
         // let tcr_flags0 = TCR_EL1::EPD0::EnableTTBR0Walks
@@ -57,6 +55,20 @@ impl memory::mmu::interface::MMU for MemoryManagementUnit {
         //     + TCR_EL1::T1SZ.val(16);
 
         // TCR_EL1.write(TCR_EL1::IPS::Bits_48 + tcr_flags0 + tcr_flags1);
+        let ips = match ID_AA64MMFR0_EL1.read(ID_AA64MMFR0_EL1::PARange) {
+            0b0000 => TCR_EL1::IPS::Bits_32,
+            0b0001 => TCR_EL1::IPS::Bits_36,
+            0b0010 => TCR_EL1::IPS::Bits_40,
+            0b0011 => TCR_EL1::IPS::Bits_42,
+            0b0100 => TCR_EL1::IPS::Bits_44,
+            0b0101 => TCR_EL1::IPS::Bits_48,
+            0b0110 => TCR_EL1::IPS::Bits_52,
+            _ => panic!("Invalid Physical Address Range"),
+        };
+
+        __println!("Current Virt Addr space: {}bits", KernelVirtAddrSpace::SIZE_SHIFT);
+
+        let t0sz = (64 - KernelVirtAddrSpace::SIZE_SHIFT) as u64;
 
         TCR_EL1.write(
             // 64 KiB granule
@@ -65,7 +77,6 @@ impl memory::mmu::interface::MMU for MemoryManagementUnit {
                 + TCR_EL1::TBI0::Used
                 // Intermediate Physical Address Size
                 + TCR_EL1::IPS::Bits_48
-                // + TCR_EL1::IPS::Bits_40
                 // Sharability attribute
                 + TCR_EL1::SH0::Inner
                 // Inner Cacheability attribute
@@ -92,17 +103,31 @@ impl memory::mmu::interface::MMU for MemoryManagementUnit {
                 isb"
             );
         }
+
+        __println!("Testing");
+        let vaddr: u64 = 0x4234_5678;
+        unsafe {
+            asm!(
+                "MOV X0, {0:x}",
+                "AT S1E1R, X0",
+                in(reg) vaddr,
+            );
+        }
+        __println!("PAR_EL1: {:#x}", PAR_EL1.get());
+        __println!("PAR_EL1::F: {:#x}", PAR_EL1.read(PAR_EL1::F));
+        __println!("PAR_EL1::PA: {:#x}", PAR_EL1.read(PAR_EL1::PA));
+
+        barrier::isb(barrier::SY);
         __println!("Enabling MMU...");
 
-        let sctlr_el1 = SCTLR_EL1::M::Enable + // MMU enable for EL1 and EL0 stage 1 address translation.
+        // Enable the MMU and turn on data and instruction caching.
+        SCTLR_EL1.modify(
+            SCTLR_EL1::M::Enable + // MMU enable for EL1 and EL0 stage 1 address translation.
             SCTLR_EL1::A::Enable +
             SCTLR_EL1::C::Cacheable + // Cacheability control, for data accesses.
-            SCTLR_EL1::I::Cacheable; // Instruction access Cacheability control, for accesses at EL0 and EL1
+            SCTLR_EL1::I::Cacheable, // Instruction access Cacheability control, for accesses at EL0 and EL1
+        );
 
-        // Enable the MMU and turn on data and instruction caching.
-        SCTLR_EL1.modify(sctlr_el1);
-
-        barrier::dsb(barrier::ISH);
         barrier::isb(barrier::SY);
 
         Ok(())
@@ -129,22 +154,22 @@ pub fn print_stat() -> Result<(), MMUEnableError> {
     let page_size = symbols::page_size();
 
     if !ID_AA64MMFR0_EL1.matches_all(match page_size {
-        65536 => ID_AA64MMFR0_EL1::TGran64::Supported,
-        16384 => ID_AA64MMFR0_EL1::TGran16::Supported,
-        4096 => ID_AA64MMFR0_EL1::TGran4::Supported,
-        _ => return Err(MMUEnableError::InvalidGranuleSize(page_size)),
+        MemorySize(65536) => ID_AA64MMFR0_EL1::TGran64::Supported,
+        MemorySize(16384) => ID_AA64MMFR0_EL1::TGran16::Supported,
+        MemorySize(4096) => ID_AA64MMFR0_EL1::TGran4::Supported,
+        _ => return Err(MMUEnableError::InvalidGranuleSize(page_size.into())),
     }) {
-        return Err(MMUEnableError::GranuleNotSupported(page_size));
+        return Err(MMUEnableError::GranuleNotSupported(page_size.into()));
     }
 
-    info!("ID_AA64MMFR0_EL1: {:#b}", ID_AA64MMFR0_EL1.get());
-    info!(
+    __println!("ID_AA64MMFR0_EL1: {:#x}", ID_AA64MMFR0_EL1.get());
+    __println!(
         "ID_AA64MMFR0_EL1::TGran: {}",
         match page_size {
-            65536 => "ID_AA64MMFR0_EL1::TGran64::Supported",
-            16384 => "ID_AA64MMFR0_EL1::TGran16::Supported",
-            4096 => "ID_AA64MMFR0_EL1::TGran4::Supported",
-            _ => return Err(MMUEnableError::InvalidGranuleSize(page_size)),
+            MemorySize(65536) => "ID_AA64MMFR0_EL1::TGran64::Supported",
+            MemorySize(16384) => "ID_AA64MMFR0_EL1::TGran16::Supported",
+            MemorySize(4096) => "ID_AA64MMFR0_EL1::TGran4::Supported",
+            _ => return Err(MMUEnableError::InvalidGranuleSize(page_size.into())),
         }
     );
 
@@ -159,10 +184,10 @@ pub fn print_stat() -> Result<(), MMUEnableError> {
         _ => 0,
     };
 
-    info!("Physical Address Range: {}", pa_range);
+    __println!("Physical Address Range: {}", pa_range);
 
     let asidbits = ID_AA64MMFR0_EL1.read(ID_AA64MMFR0_EL1::ASIDBits);
-    info!(
+    __println!(
         "ASID Bits: {}",
         match asidbits {
             0b0000 => 8,

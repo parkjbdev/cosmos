@@ -20,4 +20,3 @@ impl<const SIZE: usize> AddressSpace<SIZE> {
 pub trait AssociatedTranslationTable {
     type TableStartFromBottom;
 }
-

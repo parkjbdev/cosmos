@@ -3,14 +3,14 @@ use log::info;
 
 pub fn test_segfault() {
     let addr: u64 = 4 * 1024 * 1024 * 1024;
-    info!("Trying to read from address {:#}GiB", addr >> 30);
+    __println!("Trying to read from address {:#}GiB", addr >> 30);
     unsafe { core::ptr::read_volatile(addr as *mut u64) };
-    info!("Survived");
+    __println!("Survived");
 
     let addr: u64 = 8 * 1024 * 1024 * 1024;
-    info!("Trying to read from address {:#}GiB", addr >> 30);
+    __println!("Trying to read from address {:#}GiB", addr >> 30);
     unsafe { core::ptr::read_volatile(addr as *mut u64) };
-    info!("Survived");
+    __println!("Survived");
 }
 
 pub fn test_sgi() {

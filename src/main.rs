@@ -1,19 +1,19 @@
-#![allow(unused_variables)]
-#![allow(dead_code)]
-#![allow(incomplete_features)]
-#![feature(alloc_error_handler)]
-#![feature(fn_align)]
-#![feature(naked_functions)]
-#![feature(slice_as_chunks)]
-// #![feature(exposed_provenance)]
-// #![feature(strict_provenance)]
-#![feature(generic_const_exprs)]
-#![feature(step_trait)]
 #![no_main]
 #![no_std]
 
+#![allow(dead_code, unused_variables, incomplete_features)]
+#![feature(
+    alloc_error_handler,
+    fn_align,
+    naked_functions,
+    slice_as_chunks,
+    generic_const_exprs,
+    step_trait
+)]
+
 #[macro_use]
 pub mod print;
+
 pub mod arch;
 pub mod bsp;
 pub mod console;
@@ -25,9 +25,9 @@ pub mod sync;
 extern crate log as log_crate;
 use crate::arch::exception::el::get_current_el;
 use arch::memory::mmu::print_stat;
+use bsp::memory::symbols;
 use core::{alloc::Layout, arch::asm};
 use log_crate::info;
-use bsp::memory::symbols;
 
 #[no_mangle]
 pub(crate) unsafe extern "C" fn kernel_main() -> ! {
@@ -37,11 +37,20 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
 
     console::log::init();
 
-    let phys_kernel_tables_base_addr = match memory::kernel_mapper::kernel_map_binary() {
+    __println!("Testing Exceptions");
+    arch::test::exception::test_segfault();
+    // arch::test::exception::test_sgi();
+    __println!("Test Pass");
+
+    let phys_kernel_tables_base_addr = match memory::kernel_mapper::kernel_map_sections() {
         Err(string) => panic!("Error mapping kernel binary: {}", string),
         Ok(addr) => addr,
     };
-    __println!("{:#x} {:#x}", symbols::kernel().0, symbols::kernel().1);
+    __println!(
+        "kernel space: {:#x} ~ {:#x}",
+        symbols::kernel_range().start,
+        symbols::kernel_range().end
+    );
 
     if let Err(e) = memory::mmu::init(phys_kernel_tables_base_addr) {
         panic!("Enabling MMU failed: {}", e);
@@ -53,7 +62,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
 
     // Initialize BSP (mmio)
     __println!("Initializing Drivers");
-    bsp::init_drivers();
+    bsp::init_drivers(false);
     __println!("Driver Initialization Successful");
 
     // Initialize Interrupts
@@ -63,6 +72,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     arch::timer::init_irq();
 
     arch::irq::irq_enable();
+    arch::irq::fiq_enable();
 
     let ver = env!("CARGO_PKG_VERSION");
 
@@ -77,8 +87,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // info!("RAM Info: ");
     // arch::memory::print_ram_info();
 
-    info!("Current Page Size: {}", arch::memory::get_page_size());
-
+    __println!("********* MMU Status *********");
     print_stat();
 
     info!("Timer Status: ");
@@ -87,11 +96,6 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
         "Timer Resolution: {}ns",
         arch::timer::resolution().as_nanos()
     );
-
-    // info!("Testing Exceptions");
-    // arch::test::exception::test_segfault();
-    // arch::test::exception::test_sgi();
-    // info!("Test Pass");
 
     info!("Current Exception Level: {}", get_current_el());
 

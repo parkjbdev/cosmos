@@ -1,6 +1,8 @@
 // Exception Vector Table Handlers
 // Exception vector in `vector_table.s` will call appropriate handler
 
+use core::arch::asm;
+
 use super::state::ExceptionState;
 use crate::arch::exception::irq::INTERRUPTS;
 use aarch64_cpu::registers::*;
@@ -34,6 +36,31 @@ extern "C" fn handle_el1t_err(state: &ExceptionState) -> *mut usize {
 // This means that `SPSel` holds the value 1 and this is the mode that we are currently using
 #[no_mangle]
 extern "C" fn handle_el1h_sync(state: &mut ExceptionState) -> *mut usize {
+    __println!("el1h!!!!!!!!!!!!!!!!");
+    // #[repr(C)]
+    // struct QEMUParameterBlock {
+    //     arg0: u64,
+    //     arg1: u64,
+    // }
+
+    // let block = &QEMUParameterBlock {
+    //     arg0: 0x20026,
+    //     arg1: 1,
+    // };
+
+    // unsafe {
+    //     asm!(
+    //         "hlt #0xF000",
+    //         in("x0") 0x18,
+    //         in("x1") block as *const _ as u64,
+    //         options(nostack)
+    //     );
+    // }
+
+    // loop {
+    //     unsafe { asm!("wfe", options(nomem, nostack)) };
+    // }
+
     FAR_EL1.set(0);
     state.elr_el1 += 4;
     return core::ptr::null_mut();

@@ -11,32 +11,38 @@ fn init_device_tree() {
     __println!("DeviceTree Initialization Successful");
 }
 
-fn init_uart() {
+fn init_uart(real: bool) {
     // Initialize UART
     __println!("Initializing PL011 UART");
-    // let uart_addr_start: usize = {
-    //     let stdout = devicetree::get_property("/chosen", "stdout-path").unwrap();
-    //     core::str::from_utf8(stdout)
-    //         .unwrap()
-    //         .trim_matches(char::from(0))
-    //         .split_once('@')
-    //         .map(|(_, addr)| u32::from_str_radix(addr, 16).unwrap())
-    //         .unwrap()
-    // } as usize; // 0x09000000
+    let uart_addr_start: usize = {
+        let stdout = devicetree::get_property("/chosen", "stdout-path").unwrap();
+        core::str::from_utf8(stdout)
+            .unwrap()
+            .trim_matches(char::from(0))
+            .split_once('@')
+            .map(|(_, addr)| u32::from_str_radix(addr, 16).unwrap())
+            .unwrap()
+    } as usize; // 0x09000000
+    __println!("uart_addr_start: {:#x}", uart_addr_start);
 
     let uart_addr_start = 0x0900_0000;
     let uart_addr_end: usize = uart_addr_start + 0x1000;
 
-    let virt_addr =
-        memory::kernel_map_mmio("PL011 UART", uart_addr_start.into(), uart_addr_end.into());
-    __println!("virt_addr: {}", virt_addr);
+    let console = if real {
+        pl011::init(uart_addr_start as u32)
+    } else {
+        let virt_addr =
+            memory::kernel_map_mmio("PL011 UART", uart_addr_start.into(), uart_addr_end.into());
+        __println!("virt_addr: {}", virt_addr);
+        pl011::init(virt_addr.into())
+    };
 
-    pl011::init(virt_addr.into());
     register_console(PL011_UART.get().unwrap());
     __println!("PL011 Initialization Successful");
 }
 
-fn init_gicv3() {
+fn init_gicv3(real: bool) {
+    __println!("Initializing GICv3");
     // Initialize GIC
     // Check Compatible GIC
     let compat =
@@ -64,17 +70,29 @@ fn init_gicv3() {
     let gicr_virt_addr: usize =
         memory::kernel_map_mmio("GICR", gicr_start.into(), (gicr_start + gicr_size).into()).into();
 
-    let gicd_start: *mut u64 = gicd_virt_addr as _; // 0x08000000
-    let gicr_start: *mut u64 = gicr_virt_addr as _; // 0x080A0000
+    __println!(
+        "gicd_start: {:#x} -> {:#x}",
+        gicd_start as usize,
+        gicd_virt_addr
+    );
+    __println!(
+        "gicr_start: {:#x} -> {:#x}",
+        gicr_start as usize,
+        gicr_virt_addr
+    );
 
-    irq::init_gic(gicd_start, gicr_start).expect("Failed to initialize GIC");
-    // irq::init_gic(0x08000000 as _, 0x080A0000 as _).expect("Failed to initialize GIC");
+    if real {
+        irq::init_gic(gicd_start as _, gicr_start as _).expect("Failed to initialize GIC");
+    } else {
+        irq::init_gic(gicd_virt_addr as *mut u64, gicr_virt_addr as *mut u64)
+            .expect("Failed to initialize GIC");
+    }
 }
 
-pub fn init_drivers() {
+pub fn init_drivers(real: bool) {
     init_device_tree();
-    init_uart();
-    init_gicv3();
+    init_uart(real);
+    init_gicv3(real);
 }
 
 pub fn init_irq() {

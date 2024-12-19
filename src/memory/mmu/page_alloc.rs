@@ -26,8 +26,6 @@ impl<T: AddressType> PageAllocator<T> {
         let num_pages: usize = num_pages.into();
         let pool = self.pool.as_mut().expect("Allocator not initialized");
 
-        __println!("Allocating {} pages", num_pages);
-
         let delta: usize = num_pages * bsp::memory::KernelGranule::SIZE;
         let left_end_addr = Address::new(pool.start_page_addr().value() + delta);
         let left_end_page = PageAddress::new(left_end_addr);

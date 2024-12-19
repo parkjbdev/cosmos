@@ -1,6 +1,6 @@
 CPU := cortex-a76
 CPU_CORE := 1
-RAM_SIZE := 16G
+RAM_SIZE := 4G
 
 KERNEL := ./target/aarch64-unknown-none-softfloat/debug/cosmos
 
@@ -29,7 +29,8 @@ run: silent-build ${DISK_IMG} ${KERNEL}
 		-semihosting \
 		-kernel ${KERNEL} \
 		-drive if=virtio,format=${DISK_FORMAT},file=${DISK_IMG}          \
-		-nographic -serial mon:stdio
+		-nographic -serial mon:stdio \
+		-d int
 
 dbg: ${DISK_IMG} ${KERNEL}
 	qemu-system-aarch64 \
@@ -38,7 +39,8 @@ dbg: ${DISK_IMG} ${KERNEL}
 		-semihosting \
 		-kernel ${KERNEL} \
 		-drive if=virtio,format=${DISK_FORMAT},file=${DISK_IMG}          \
-		-nographic -serial mon:stdio -s -S
+		-nographic -serial mon:stdio -s -S \
+		-d int
 
 lldb:
 	lldb -o "gdb-remote localhost:1234" ${KERNEL}

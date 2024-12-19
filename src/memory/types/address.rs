@@ -55,6 +55,18 @@ impl<T: AddressType> Address<T> {
     }
 }
 
+impl Address<Virtual> {
+    pub fn into_physical(self) -> Address<Physical> {
+        Address::<Physical>::new(self.value)
+    }
+}
+
+impl Address<Physical> {
+    pub fn into_virtual(self) -> Address<Virtual> {
+        Address::<Virtual>::new(self.value)
+    }
+}
+
 impl Into<Address<Physical>> for usize {
     fn into(self) -> Address<Physical> {
         Address::<Physical>::new(self)

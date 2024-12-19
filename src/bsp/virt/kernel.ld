@@ -18,7 +18,10 @@ PHDRS
 SECTIONS
 {
   . = __kernel_start_;
+  __device_tree_start_ = .;
   . += 1M;
+  __device_tree_end_ = .;
+
   __text_start_ = .;
   .text : ALIGN(65536) {
     KEEP(*(.text._start))
@@ -68,11 +71,11 @@ SECTIONS
   /***********************************************************************************************
    * Boot Core Stack
    ***********************************************************************************************/
-  __boot_core_stack_start_ = .;         /*   ^             */ 
-                                       /*   | stack       */
-  . += 1M;                          /*   | growth      */
-                                       /*   | direction   */
-  . = ALIGN(__PAGE_SIZE_);                /*   |             */
+  __boot_core_stack_start_ = .;         /*   ^             */
+                                        /*   | stack       */
+  . += 1M;                              /*   | growth      */
+                                        /*   | direction   */
+  . = ALIGN(__PAGE_SIZE_);              /*   |             */
   __boot_core_stack_end_ = .;           /*   |             */
 
   __mmio_remap_start_ = .;
@@ -86,16 +89,16 @@ SECTIONS
   __kernel_end_ = .;
 
   /* 디버그 섹션들을 유지 */
-    .debug_info 0 : { *(.debug_info) }
-    .debug_abbrev 0 : { *(.debug_abbrev) }
-    .debug_line 0 : { *(.debug_line) }
-    .debug_str 0 : { *(.debug_str) }
+    /* .debug_info 0 : { *(.debug_info) } */
+    /* .debug_abbrev 0 : { *(.debug_abbrev) } */
+    /* .debug_line 0 : { *(.debug_line) } */
+    /* .debug_str 0 : { *(.debug_str) } */
 
     /* 또는 /DISCARD/에서 디버그 섹션을 제외 */
-    /DISCARD/ : {
-        *(.note.GNU-stack)
-        *(.note.gnu.property)
+    /* /DISCARD/ : { */
+    /*     *(.note.GNU-stack) */
+    /*     *(.note.gnu.property) */
         /* 디버그 섹션은 제외 */
         /* *(.debug*) */
-    }
+    /* } */
 }

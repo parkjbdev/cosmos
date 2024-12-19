@@ -2,17 +2,12 @@ pub mod mmu;
 use mmu::MMU;
 
 use crate::arch::drivers::devicetree;
-use crate::bsp::memory::symbols;
 use crate::memory;
 use crate::memory::types::MemorySize;
 use log::info;
 
 pub fn mmu() -> &'static impl memory::mmu::interface::MMU {
     &MMU
-}
-
-pub fn get_page_size() -> MemorySize {
-    MemorySize(symbols::page_size() as usize)
 }
 
 pub fn get_ramrange() -> (u64, MemorySize) {

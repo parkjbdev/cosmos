@@ -11,7 +11,8 @@
     {
       "label": "build",
       "type": "shell",
-      "command": "make build"
+      "command": "make build",
+      "problemMatcher": []
     },
     {
       "label": "clean build",

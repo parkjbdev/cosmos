@@ -1,16 +1,14 @@
 pub mod symbols;
 
-use core::num::NonZeroUsize;
-
-use crate::{
-    memory::{
-        address_space::{AddressSpace, AssociatedTranslationTable},
-        kernel_mapper::kernel_map_at,
-        mmu::page_alloc::kernel_va_allocator,
-        types::*,
-    },
-    sync::null_lock::NullLock,
+use crate::memory::{
+    address_space::{AddressSpace, AssociatedTranslationTable},
+    mmu::page_alloc::kernel_va_allocator,
+    translation_table::interface::TranslationTable,
+    types::*,
 };
+use core::num::NonZeroUsize;
+use spin::RwLock;
+use symbols::Section;
 
 pub type KernelTranslationTable =
     <KernelVirtAddrSpace as AssociatedTranslationTable>::TableStartFromBottom;
@@ -18,25 +16,24 @@ pub type KernelTranslationTable =
 // 64 KiB granule size
 pub type KernelGranule = TranslationGranule<{ 64 * 1024 }>;
 // 4 GiB address space
-pub type KernelVirtAddrSpace = AddressSpace<{ 2 << 30 }>;
+pub type KernelVirtAddrSpace = AddressSpace<{ 1 << 42 }>;
 
-pub static KERNEL_TABLES: NullLock<KernelTranslationTable> =
-    NullLock::new(KernelTranslationTable::new());
+pub static KERNEL_TABLES: RwLock<KernelTranslationTable> =
+    RwLock::new(KernelTranslationTable::new());
 
-pub fn kernel_tables() -> &'static NullLock<KernelTranslationTable> {
-    &KERNEL_TABLES
-}
+pub fn virtual_region_of(
+    start_addr: Address<Physical>,
+    end_addr: Address<Physical>,
+) -> MemoryRegion<Virtual> {
+    let page_cnt = (end_addr - start_addr).0 >> KernelGranule::SHIFT;
 
-fn virtual_region_of(start_addr: usize, end_addr: usize) -> MemoryRegion<Virtual> {
-    let page_cnt = (end_addr - start_addr) >> KernelGranule::SHIFT;
-
-    let start_page: PageAddress<Virtual> = PageAddress::from(start_addr);
+    let start_page = PageAddress::from(start_addr.into_virtual());
     let end_page = start_page.offset(page_cnt as isize).unwrap();
 
     MemoryRegion::<Virtual>::new(start_page, end_page)
 }
 
-fn physical_region_of(virt_region: MemoryRegion<Virtual>) -> MemoryRegion<Physical> {
+pub fn physical_region_of(virt_region: MemoryRegion<Virtual>) -> MemoryRegion<Physical> {
     MemoryRegion::<Physical>::new(
         PageAddress::from(virt_region.start_page_addr().inner().value()),
         PageAddress::from(virt_region.end_page_addr().inner().value()),
@@ -48,6 +45,7 @@ pub fn kernel_map_mmio(
     start_addr: Address<Physical>,
     end_addr: Address<Physical>,
 ) -> Address<Virtual> {
+
     let start_addr = start_addr.align_down_page();
     let end_addr = end_addr.align_up_page();
 
@@ -62,8 +60,17 @@ pub fn kernel_map_mmio(
 
     let virt_region = kernel_va_allocator().lock().alloc(num_pages).unwrap();
 
-    kernel_map_at(
+
+    __println!(
+        "Mapping MMIO: {} [{:#x} ~ {:#x}], {} pages, {}",
         name,
+        start_addr,
+        end_addr,
+        num_pages,
+        virt_region
+    );
+
+    let _ = KERNEL_TABLES.write().map_at(
         &virt_region,
         &phys_region,
         &AttributeFields {
@@ -75,84 +82,13 @@ pub fn kernel_map_mmio(
     virt_region.start_addr() + Address::<Virtual>::new(offset)
 }
 
-pub(crate) fn kernel_map_sections() -> Result<(), &'static str> {
-    let (start_addr, end_addr) = (0x4000_0000, 0x4010_0000);
-    let virt_region = virtual_region_of(start_addr, end_addr);
-    let phys_region = physical_region_of(virt_region);
-    kernel_map_at(
-        "Kernel .devicetree Section",
-        &virt_region,
-        &phys_region,
-        &AttributeFields {
-            memory_attributes: MemoryAttributes::CacheableDRAM,
-            access_permissions: AccessPermissions::RO,
-        },
-    );
+pub fn kernel_sections() -> [Section; 6] {
+    let device_tree = symbols::device_tree();
+    let text = symbols::text();
+    let rodata = symbols::rodata();
+    let data = symbols::data();
+    let bss = symbols::bss();
+    let boot_core_stack = symbols::boot_core_stack();
 
-    let (start_addr, end_addr) = self::symbols::text();
-    let virt_region = virtual_region_of(start_addr, end_addr);
-    let phys_region = physical_region_of(virt_region);
-    kernel_map_at(
-        "Kernel .text Section",
-        &virt_region,
-        &phys_region,
-        &AttributeFields {
-            memory_attributes: MemoryAttributes::CacheableDRAM,
-            access_permissions: AccessPermissions::RX,
-        },
-    );
-
-    let (start_addr, end_addr) = self::symbols::rodata();
-    let virt_region = virtual_region_of(start_addr, end_addr);
-    let phys_region = physical_region_of(virt_region);
-    kernel_map_at(
-        "Kernel .rodata Section",
-        &virt_region,
-        &phys_region,
-        &AttributeFields {
-            memory_attributes: MemoryAttributes::CacheableDRAM,
-            access_permissions: AccessPermissions::RO,
-        },
-    );
-
-    let (start_addr, end_addr) = self::symbols::data();
-    let virt_region = virtual_region_of(start_addr, end_addr);
-    let phys_region = physical_region_of(virt_region);
-    kernel_map_at(
-        "Kernel .data Section",
-        &virt_region,
-        &phys_region,
-        &AttributeFields {
-            memory_attributes: MemoryAttributes::CacheableDRAM,
-            access_permissions: AccessPermissions::RW,
-        },
-    );
-
-    let (start_addr, end_addr) = self::symbols::bss();
-    let virt_region = virtual_region_of(start_addr, end_addr);
-    let phys_region = physical_region_of(virt_region);
-    kernel_map_at(
-        "Kernel .bss Section",
-        &virt_region,
-        &phys_region,
-        &AttributeFields {
-            memory_attributes: MemoryAttributes::CacheableDRAM,
-            access_permissions: AccessPermissions::RW,
-        },
-    );
-
-    let (start_addr, end_addr) = self::symbols::boot_core_stack();
-    let virt_region = virtual_region_of(start_addr, end_addr);
-    let phys_region = physical_region_of(virt_region);
-    kernel_map_at(
-        "Kernel bootcore stack Section",
-        &virt_region,
-        &phys_region,
-        &AttributeFields {
-            memory_attributes: MemoryAttributes::CacheableDRAM,
-            access_permissions: AccessPermissions::RW,
-        },
-    );
-
-    Ok(())
+    [device_tree, text, rodata, data, bss, boot_core_stack]
 }

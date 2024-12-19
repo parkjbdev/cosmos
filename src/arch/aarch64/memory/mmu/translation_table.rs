@@ -25,7 +25,6 @@ pub struct FixedSizeTranslationTable<const NUM_TABLES: usize> {
 
     /// Have the tables been initialized?
     pub initialized: bool,
-    start_addr: Address<Physical>,
 }
 
 impl<const NUM_TABLES: usize> FixedSizeTranslationTable<NUM_TABLES> {
@@ -35,7 +34,6 @@ impl<const NUM_TABLES: usize> FixedSizeTranslationTable<NUM_TABLES> {
             l2: [TableDescriptor::new(); NUM_TABLES],
             l3: [[PageDescriptor::new(); 8192]; NUM_TABLES],
             initialized: false,
-            start_addr: Address::new(0),
         }
     }
 
@@ -94,10 +92,10 @@ impl<const NUM_TABLES: usize> FixedSizeTranslationTable<NUM_TABLES> {
     }
 
     #[inline(always)]
-    fn get_page(&mut self, virt_page_addr: PageAddress<Virtual>) -> PageDescriptor {
+    fn get_page(&self, virt_page_addr: PageAddress<Virtual>) -> PageDescriptor {
         let l2_idx = Self::l2_idx(virt_page_addr).unwrap();
         let l3_idx = Self::l3_idx(virt_page_addr).unwrap();
-        let desc = &mut self.l3[l2_idx][l3_idx];
+        let desc = &self.l3[l2_idx][l3_idx];
         *desc
     }
 }
@@ -117,7 +115,6 @@ impl<const NUM_TABLES: usize> memory::translation_table::interface::TranslationT
             *l2_entry = TableDescriptor::from_next_level_table_addr(phys_table_addr);
         }
 
-        self.start_addr = self.l2.phys_start_addr();
         self.initialized = true;
     }
 
@@ -126,7 +123,6 @@ impl<const NUM_TABLES: usize> memory::translation_table::interface::TranslationT
         if !self.initialized {
             return Err("Translation table is not initialized");
         }
-        // Ok(self.start_addr)
         Ok(self.l2.phys_start_addr())
     }
 
@@ -145,7 +141,7 @@ impl<const NUM_TABLES: usize> memory::translation_table::interface::TranslationT
             return Err("Tried to map memory regions with unequal sizes");
         }
 
-        if phys_region.end_page_addr().value() > symbols::kernel().1 {
+        if phys_region.end_page_addr().value() > symbols::kernel_range().end.value() {
             return Err("Physical region is out of bounds of translation table");
         }
 
