@@ -1,5 +1,6 @@
 /target
 
 disk.img
+*.dts
 *.dtb
 *.img
