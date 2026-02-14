@@ -1,5 +1,14 @@
+# IDE files
+/.idea
+/.vscode
+
+# macOS
+.DS_Store
+
+# Build files
 /target
 
+# Generated files
 disk.img
 *.dts
 *.dtb
