@@ -60,16 +60,6 @@ pub fn kernel_map_mmio(
 
     let virt_region = kernel_va_allocator().lock().alloc(num_pages).unwrap();
 
-
-    __println!(
-        "Mapping MMIO: {} [{:#x} ~ {:#x}], {} pages, {}",
-        name,
-        start_addr,
-        end_addr,
-        num_pages,
-        virt_region
-    );
-
     let _ = KERNEL_TABLES.write().map_at(
         &virt_region,
         &phys_region,

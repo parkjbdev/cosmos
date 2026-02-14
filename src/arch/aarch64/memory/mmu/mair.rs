@@ -38,9 +38,9 @@ impl convert::From<AttributeFields>
 
         // The execute-never attribute is mapped to PXN in AArch64.
         desc += if attribute_fields.access_permissions as u8 & 0b001 == 0b001 {
-            STAGE1_PAGE_DESCRIPTOR::PXN::True
-        } else {
             STAGE1_PAGE_DESCRIPTOR::PXN::False
+        } else {
+            STAGE1_PAGE_DESCRIPTOR::PXN::True
         };
 
         // Always set unprivileged exectue-never as long as userspace is not implemented yet.

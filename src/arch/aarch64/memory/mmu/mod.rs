@@ -7,7 +7,6 @@ use crate::memory::types::*;
 use crate::memory::{self, mmu::error::MMUEnableError};
 use aarch64_cpu::{asm::barrier, registers::*};
 use core::arch::asm;
-use log::info;
 use tock_registers::interfaces::{ReadWriteable, Readable};
 
 pub(super) static MMU: MemoryManagementUnit = MemoryManagementUnit;
@@ -120,7 +119,6 @@ impl memory::mmu::interface::MMU for MemoryManagementUnit {
         barrier::isb(barrier::SY);
         __println!("Enabling MMU...");
 
-        // Enable the MMU and turn on data and instruction caching.
         SCTLR_EL1.modify(
             SCTLR_EL1::M::Enable + // MMU enable for EL1 and EL0 stage 1 address translation.
             SCTLR_EL1::A::Enable +
@@ -162,8 +160,8 @@ pub fn print_stat() -> Result<(), MMUEnableError> {
         return Err(MMUEnableError::GranuleNotSupported(page_size.into()));
     }
 
-    __println!("ID_AA64MMFR0_EL1: {:#x}", ID_AA64MMFR0_EL1.get());
-    __println!(
+    println!("ID_AA64MMFR0_EL1: {:#x}", ID_AA64MMFR0_EL1.get());
+    println!(
         "ID_AA64MMFR0_EL1::TGran: {}",
         match page_size {
             MemorySize(65536) => "ID_AA64MMFR0_EL1::TGran64::Supported",
@@ -184,10 +182,10 @@ pub fn print_stat() -> Result<(), MMUEnableError> {
         _ => 0,
     };
 
-    __println!("Physical Address Range: {}", pa_range);
+    println!("Physical Address Range: {}", pa_range);
 
     let asidbits = ID_AA64MMFR0_EL1.read(ID_AA64MMFR0_EL1::ASIDBits);
-    __println!(
+    println!(
         "ASID Bits: {}",
         match asidbits {
             0b0000 => 8,

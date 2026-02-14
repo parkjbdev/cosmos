@@ -5,8 +5,6 @@
 #![feature(
     alloc_error_handler,
     fn_align,
-    naked_functions,
-    slice_as_chunks,
     generic_const_exprs,
     step_trait
 )]
@@ -56,14 +54,15 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
         panic!("Enabling MMU failed: {}", e);
     }
 
-    __println!("Initializing Allocator");
-    memory::mmu::init_mmio_allocator();
-    __println!("Allocator Initialization Successful");
+    // NOTE: No printing between MMU enable and UART re-init.
+    // After MMU is on, the physical UART address 0x0900_0000 is unmapped.
+    // We must init the MMIO allocator and remap the UART first.
 
-    // Initialize BSP (mmio)
-    __println!("Initializing Drivers");
+    memory::mmu::init_mmio_allocator();
     bsp::init_drivers(false);
-    __println!("Driver Initialization Successful");
+
+    // UART is now remapped to a virtual address — safe to print again.
+    println!("MMU enabled successfully");
 
     // Initialize Interrupts
     bsp::init_irq();
@@ -82,12 +81,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     println!("   \\___/\\____/____/_/ /_/ /_/\\____/____/  v{}", ver);
     println!();
 
-    // // CPU & RAM Info
-    // info!("CPU Count: {} CPUs", arch::get_cpus());
-    // info!("RAM Info: ");
-    // arch::memory::print_ram_info();
-
-    __println!("********* MMU Status *********");
+    println!("********* MMU Status *********");
     print_stat();
 
     info!("Timer Status: ");
