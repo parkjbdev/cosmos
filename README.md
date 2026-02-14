@@ -8,4 +8,4 @@ rustup override nightly-2025-01-25-aarch64-apple-darwin
 - https://www.theseus-os.com
 - https://github.com/hermit-os
 - https://github.com/rust-osdev/bootloader.git
-- https://github.com/parkjbdev/Navilos
+- https://github.com/navilera/Navilos
