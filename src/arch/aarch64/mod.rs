@@ -5,6 +5,7 @@ pub mod memory;
 pub mod start;
 pub mod test;
 pub mod timer;
+pub mod semihosting;
 
 pub use exception::irq;
 
