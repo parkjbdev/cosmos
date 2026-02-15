@@ -9,8 +9,22 @@ pub fn kernel_map_sections() -> Result<Address<Physical>, &'static str> {
     let phys_kernel_tables_baddr = kernel_table.phys_base_addr().unwrap();
     // kernel_table.downgrade();
 
-    __println!("      -------------------------------------------------------------------------------------------------------------------------------------------");
-    __println!(
+    let sections = bsp::memory::kernel_sections();
+    for section in sections.iter() {
+        let virt_region = virtual_region_of(section.range.start, section.range.end);
+        let phys_region = physical_region_of(virt_region);
+
+        kernel_table.map_at(&virt_region, &phys_region, &section.attr)?;
+    }
+
+    Ok(phys_kernel_tables_baddr)
+}
+
+pub fn log_mapping() {
+    let kernel_table = bsp::memory::KERNEL_TABLES.read();
+    let sections = bsp::memory::kernel_sections();
+    println!("      -------------------------------------------------------------------------------------------------------------------------------------------");
+    println!(
         "       {:^32} {:^28} {:^22} {:^7} {:^35}",
         "Virtual",
         "Physical",
@@ -18,15 +32,11 @@ pub fn kernel_map_sections() -> Result<Address<Physical>, &'static str> {
         "Attr",
         "Entity"
     );
-    __println!("      -------------------------------------------------------------------------------------------------------------------------------------------");
-    let sections = bsp::memory::kernel_sections();
+    println!("      -------------------------------------------------------------------------------------------------------------------------------------------");
     for section in sections.iter() {
         let virt_region = virtual_region_of(section.range.start, section.range.end);
         let phys_region = physical_region_of(virt_region);
-
-        kernel_table.map_at(&virt_region, &phys_region, &section.attr)?;
-
-        __println!(
+        println!(
             "      {} --> {} | {} | {:<3} {} | {}",
             virt_region,
             phys_region,
@@ -36,8 +46,5 @@ pub fn kernel_map_sections() -> Result<Address<Physical>, &'static str> {
             section.name
         );
     }
-
-    __println!("      -------------------------------------------------------------------------------------------------------------------------------------------");
-
-    Ok(phys_kernel_tables_baddr)
+    println!("      -------------------------------------------------------------------------------------------------------------------------------------------");
 }

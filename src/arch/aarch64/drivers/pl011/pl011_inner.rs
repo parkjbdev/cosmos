@@ -8,14 +8,18 @@ pub(super) struct PL011UartInner {
     pub registers: Registers,
     pub chars_written: usize,
     pub chars_read: usize,
+    clock_hz: u32,
+    baud_rate: u32,
 }
 
 impl PL011UartInner {
-    pub(super) const fn new(base: u32) -> Self {
+    pub(super) const fn new(base: usize, clock_hz: u32, baud_rate: u32) -> Self {
         Self {
-            registers: unsafe { Registers::new(base as usize) },
+            registers: unsafe { Registers::new(base) },
             chars_written: 0,
             chars_read: 0,
+            clock_hz,
+            baud_rate,
         }
     }
 
@@ -65,9 +69,12 @@ impl driver::interface::DeviceDriver for PL011UartInner {
         self.registers.CR.set(0);
         self.registers.ICR.write(ICR::ALL::CLEAR);
 
-        // Set baud rate
-        self.registers.IBRD.write(IBRD::BAUD_DIVINT.val(3));
-        self.registers.FBRD.write(FBRD::BAUD_DIVFRAC.val(16));
+        // Set baud rate: BRD = clock / (16 * baud)
+        let brd_x64 = (4 * self.clock_hz) / self.baud_rate;
+        let ibrd = brd_x64 / 64;
+        let fbrd = brd_x64 % 64;
+        self.registers.IBRD.write(IBRD::BAUD_DIVINT.val(ibrd));
+        self.registers.FBRD.write(FBRD::BAUD_DIVFRAC.val(fbrd));
 
         // Set Data Frame
         self.registers

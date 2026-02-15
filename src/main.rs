@@ -1,13 +1,7 @@
 #![no_main]
 #![no_std]
-
 #![allow(dead_code, unused_variables, incomplete_features)]
-#![feature(
-    alloc_error_handler,
-    fn_align,
-    generic_const_exprs,
-    step_trait
-)]
+#![feature(alloc_error_handler, fn_align, generic_const_exprs, step_trait)]
 
 #[macro_use]
 pub mod print;
@@ -22,10 +16,10 @@ pub mod sync;
 
 extern crate log as log_crate;
 use crate::arch::exception::el::get_current_el;
-use arch::memory::mmu::print_stat;
+use arch::memory::mmu;
 use bsp::memory::symbols;
 use core::{alloc::Layout, arch::asm};
-use log_crate::info;
+use log_crate::{debug, error, info, warn};
 
 #[no_mangle]
 pub(crate) unsafe extern "C" fn kernel_main() -> ! {
@@ -35,20 +29,10 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
 
     console::log::init();
 
-    __println!("Testing Exceptions");
-    arch::test::exception::test_segfault();
-    // arch::test::exception::test_sgi();
-    __println!("Test Pass");
-
     let phys_kernel_tables_base_addr = match memory::kernel_mapper::kernel_map_sections() {
         Err(string) => panic!("Error mapping kernel binary: {}", string),
         Ok(addr) => addr,
     };
-    __println!(
-        "kernel space: {:#x} ~ {:#x}",
-        symbols::kernel_range().start,
-        symbols::kernel_range().end
-    );
 
     if let Err(e) = memory::mmu::init(phys_kernel_tables_base_addr) {
         panic!("Enabling MMU failed: {}", e);
@@ -62,7 +46,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     bsp::init_drivers(false);
 
     // UART is now remapped to a virtual address — safe to print again.
-    println!("MMU enabled successfully");
+    println!("MMU enabled.");
 
     // Initialize Interrupts
     bsp::init_irq();
@@ -81,8 +65,15 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     println!("   \\___/\\____/____/_/ /_/ /_/\\____/____/  v{}", ver);
     println!();
 
+    println!(
+        "kernel space: {:#x} ~ {:#x}",
+        symbols::kernel_range().start,
+        symbols::kernel_range().end
+    );
+
     println!("********* MMU Status *********");
-    print_stat();
+    mmu::print_stat();
+    memory::kernel_mapper::log_mapping();
 
     info!("Timer Status: ");
     arch::timer::print_timer_status();
@@ -117,15 +108,15 @@ fn handle_alloc_error(_layout: Layout) -> ! {
 
 #[panic_handler]
 fn handle_panic(info: &core::panic::PanicInfo<'_>) -> ! {
-    __println!("************************************************");
-    __println!("KERNEL PANIC: {}", info.message());
+    println!("************************************************");
+    println!("KERNEL PANIC: {}", info.message());
     let (file, line, column) = match info.location() {
         Some(location) => (location.file(), location.line(), location.column()),
         None => ("unknown", 0, 0),
     };
 
-    __println!("{}:{}:{}", file, line, column);
-    __println!("************************************************");
+    println!("{}:{}:{}", file, line, column);
+    println!("************************************************");
 
     #[repr(C)]
     struct QEMUParameterBlock {

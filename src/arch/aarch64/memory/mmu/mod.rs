@@ -65,7 +65,7 @@ impl memory::mmu::interface::MMU for MemoryManagementUnit {
             _ => panic!("Invalid Physical Address Range"),
         };
 
-        __println!("Current Virt Addr space: {}bits", KernelVirtAddrSpace::SIZE_SHIFT);
+        // __println!("Current Virt Addr space: {}bits", KernelVirtAddrSpace::SIZE_SHIFT);
 
         let t0sz = (64 - KernelVirtAddrSpace::SIZE_SHIFT) as u64;
 
@@ -103,7 +103,6 @@ impl memory::mmu::interface::MMU for MemoryManagementUnit {
             );
         }
 
-        __println!("Testing");
         let vaddr: u64 = 0x4234_5678;
         unsafe {
             asm!(
@@ -112,12 +111,11 @@ impl memory::mmu::interface::MMU for MemoryManagementUnit {
                 in(reg) vaddr,
             );
         }
-        __println!("PAR_EL1: {:#x}", PAR_EL1.get());
-        __println!("PAR_EL1::F: {:#x}", PAR_EL1.read(PAR_EL1::F));
-        __println!("PAR_EL1::PA: {:#x}", PAR_EL1.read(PAR_EL1::PA));
+        // __println!("PAR_EL1: {:#x}", PAR_EL1.get());
+        // __println!("PAR_EL1::F: {:#x}", PAR_EL1.read(PAR_EL1::F));
+        // __println!("PAR_EL1::PA: {:#x}", PAR_EL1.read(PAR_EL1::PA));
 
         barrier::isb(barrier::SY);
-        __println!("Enabling MMU...");
 
         SCTLR_EL1.modify(
             SCTLR_EL1::M::Enable + // MMU enable for EL1 and EL0 stage 1 address translation.

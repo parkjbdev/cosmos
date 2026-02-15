@@ -15,9 +15,9 @@ pub struct PL011Uart {
 }
 
 impl PL011Uart {
-    pub const fn new(base: u32) -> Self {
+    pub const fn new(base: usize, clock_hz: u32, baud_rate: u32) -> Self {
         Self {
-            inner: NullLock::new(PL011UartInner::new(base)),
+            inner: NullLock::new(PL011UartInner::new(base, clock_hz, baud_rate)),
         }
     }
 }

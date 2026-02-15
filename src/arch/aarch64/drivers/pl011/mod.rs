@@ -13,9 +13,9 @@ pub use pl011::PL011Uart;
 
 pub static PL011_UART: OnceCell<RawSpinlock, PL011Uart> = OnceCell::new();
 
-pub fn init(base: u32) {
+pub fn init(base: usize, clock_hz: u32, baud_rate: u32) {
     #![allow(unused_must_use)]
-    PL011_UART.set(PL011Uart::new(base));
+    PL011_UART.set(PL011Uart::new(base, clock_hz, baud_rate));
     PL011_UART.get().unwrap().init();
 }
 

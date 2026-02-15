@@ -60,17 +60,18 @@ macro_rules! dbg {
     };
 }
 
-#[macro_export]
-macro_rules! __println {
-    ($($arg:tt)*) => {
-        {
-            use crate::arch::drivers::pl011::PL011Uart;
-            use crate::driver::interface::DeviceDriver;
-            use crate::console::interface::Write;
-
-            let uart = PL011Uart::new(0x0900_0000);
-            let _ = uart.init();
-            let _ = uart.write_fmt(core::format_args!("{}\n", core::format_args!($($arg)*)));
-        }
-    };
-}
+// RAW MACROS FOR TESTING PURPOSES ONLY. DO NOT USE IN PRODUCTION CODE.
+// #[macro_export]
+// macro_rules! __println {
+//     ($($arg:tt)*) => {
+//         {
+//             use crate::arch::drivers::pl011::PL011Uart;
+//             use crate::driver::interface::DeviceDriver;
+//             use crate::console::interface::Write;
+//
+//             let uart = PL011Uart::new(0x0900_0000, 24_000_000, 115_200);
+//             let _ = uart.init();
+//             let _ = uart.write_fmt(core::format_args!("{}\n", core::format_args!($($arg)*)));
+//         }
+//     };
+// }

@@ -53,7 +53,7 @@ fn handle_interrupt(state: ExceptionState) -> *mut usize {
 // This means that `SPSel` holds the value 1 and this is the mode that we are currently using
 #[no_mangle]
 extern "C" fn handle_el1h_sync(state: &mut ExceptionState) -> *mut usize {
-    revive_from_fault(state);
+    // revive_from_fault(state);
 
     return core::ptr::null_mut();
 

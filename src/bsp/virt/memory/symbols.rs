@@ -1,7 +1,6 @@
 use core::{cell::UnsafeCell, ops::{Add, Range}};
 use super::{AccessPermissions, Address, AttributeFields, MemoryAttributes, MemorySize, Physical};
 
-pub const SERIAL_PORT_ADDRESS: u32 = 0x09000000;
 pub const RAM_START: u64 = 0x40000000;
 pub const DEVICE_TREE_START: u64 = 0x40000000;
 
