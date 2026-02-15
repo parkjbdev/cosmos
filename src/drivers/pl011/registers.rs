@@ -113,5 +113,5 @@ register_structs! {
     }
 }
 
-use crate::arch::drivers::MMIODerefWrapper;
+use crate::drivers::mmio::MMIODerefWrapper;
 pub type Registers = MMIODerefWrapper<RegisterBlock>;

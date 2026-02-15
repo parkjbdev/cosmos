@@ -1,1 +1,1 @@
-pub use crate::arch::drivers::pl011::init_irq;
+pub use crate::drivers::pl011::init_irq;

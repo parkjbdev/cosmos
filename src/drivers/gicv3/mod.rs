@@ -1,32 +1,21 @@
 pub mod irq_type;
 
 use self::irq_type::InterruptType;
-use super::state::ExceptionState;
-use super::Handler;
+use crate::arch::exception::state::ExceptionState;
 use crate::sync::spinlock::{RawSpinlock, Spinlock};
 use aarch64_cpu::asm;
-use aarch64_cpu::registers::*;
 use arm_gic::gicv3::{GicV3, IntId, SgiTarget, Trigger};
 use core::fmt::Display;
 use generic_once_cell::OnceCell;
 use log::info;
-use tock_registers::interfaces::ReadWriteable;
+
+pub type Handler = fn(state: &ExceptionState) -> bool;
 
 const MAX_INTERRUPTS: usize = 1024;
 pub static INTERRUPTS: Spinlock<[Option<Interrupt>; MAX_INTERRUPTS]> =
     Spinlock::new([None; MAX_INTERRUPTS]);
 
 pub(crate) static mut GIC: OnceCell<RawSpinlock, GicV3> = OnceCell::new();
-
-pub fn exec_with_irq_disabled<F, R>(f: F) -> R
-where
-    F: FnOnce() -> R,
-{
-    let daif = DAIF.get();
-    let ret = f();
-    DAIF.set(daif);
-    ret
-}
 
 pub fn init_gic(gicd: *mut u64, gicr: *mut u64) -> Result<(), GicV3> {
     let mut gic = unsafe { GicV3::new(gicd, gicr) };
@@ -194,20 +183,4 @@ pub fn send_sgi(id: u32) {
             target_list: 0b1,
         },
     );
-}
-
-pub fn irq_enable() {
-    DAIF.modify(DAIF::I::Unmasked);
-}
-
-pub fn irq_disable() {
-    DAIF.modify(DAIF::I::Masked);
-}
-
-pub fn fiq_enable() {
-    DAIF.modify(DAIF::F::Unmasked);
-}
-
-pub fn fiq_disable() {
-    DAIF.modify(DAIF::F::Masked);
 }

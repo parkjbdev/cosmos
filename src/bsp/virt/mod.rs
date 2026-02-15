@@ -1,6 +1,6 @@
-use crate::arch::drivers::devicetree;
-use crate::arch::drivers::pl011::{self, PL011_UART};
-use crate::arch::irq;
+use crate::drivers::devicetree;
+use crate::drivers::pl011::{self, PL011_UART};
+use crate::drivers::gicv3;
 use crate::bsp::memory::symbols::DEVICE_TREE_START;
 use crate::console::register_console;
 
@@ -63,9 +63,9 @@ fn init_gicv3(real: bool) {
         memory::kernel_map_mmio("GICR", gicr_start.into(), (gicr_start + gicr_size).into()).into();
 
     if real {
-        irq::init_gic(gicd_start as _, gicr_start as _).expect("Failed to initialize GIC");
+        gicv3::init_gic(gicd_start as _, gicr_start as _).expect("Failed to initialize GIC");
     } else {
-        irq::init_gic(gicd_virt_addr as *mut u64, gicr_virt_addr as *mut u64)
+        gicv3::init_gic(gicd_virt_addr as *mut u64, gicr_virt_addr as *mut u64)
             .expect("Failed to initialize GIC");
     }
 }

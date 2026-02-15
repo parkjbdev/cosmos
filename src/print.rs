@@ -65,7 +65,7 @@ macro_rules! dbg {
 // macro_rules! __println {
 //     ($($arg:tt)*) => {
 //         {
-//             use crate::arch::drivers::pl011::PL011Uart;
+//             use crate::drivers::pl011::PL011Uart;
 //             use crate::driver::interface::DeviceDriver;
 //             use crate::console::interface::Write;
 //

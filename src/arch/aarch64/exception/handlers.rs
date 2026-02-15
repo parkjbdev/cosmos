@@ -4,7 +4,7 @@
 use core::arch::asm;
 
 use super::state::ExceptionState;
-use crate::arch::exception::irq::INTERRUPTS;
+use crate::drivers::gicv3::INTERRUPTS;
 use aarch64_cpu::registers::*;
 use arm_gic::gicv3::GicV3;
 

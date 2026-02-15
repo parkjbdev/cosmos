@@ -1,7 +1,7 @@
 pub mod mmu;
 use mmu::MMU;
 
-use crate::arch::drivers::devicetree;
+use crate::drivers::devicetree;
 use crate::memory;
 use crate::memory::types::MemorySize;
 use log::info;

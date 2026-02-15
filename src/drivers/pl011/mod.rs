@@ -3,7 +3,7 @@ mod pl011_inner;
 mod registers;
 
 use crate::{
-    arch::{drivers::devicetree, irq::Interrupt},
+    drivers::{devicetree, gicv3::Interrupt},
     console::console,
     driver::interface::DeviceDriver,
     sync::spinlock::RawSpinlock,

@@ -10,6 +10,7 @@ pub mod arch;
 pub mod bsp;
 pub mod console;
 pub mod driver;
+pub mod drivers;
 pub mod interrupt;
 pub mod memory;
 pub mod sync;
@@ -24,7 +25,7 @@ use log_crate::{debug, error, info, warn};
 #[no_mangle]
 pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // Initialize Exceptions
-    arch::irq::irq_disable();
+    arch::exception::irq::irq_disable();
     arch::exception::set_exception_handler();
 
     console::log::init();
@@ -54,8 +55,8 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // Initialize Timer Interrupt
     arch::timer::init_irq();
 
-    arch::irq::irq_enable();
-    arch::irq::fiq_enable();
+    arch::exception::irq::irq_enable();
+    arch::exception::irq::fiq_enable();
 
     let ver = env!("CARGO_PKG_VERSION");
 
@@ -88,7 +89,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     arch::exception::print_state();
 
     info!("Registered IRQ handlers:");
-    arch::irq::print_interrupts();
+    drivers::gicv3::print_interrupts();
 
     info!("Echoing Inputs");
     info!("Waiting for interrupts...");
