@@ -11,18 +11,18 @@ qemu-virt=[]
 
 [dependencies]
 aarch64-cpu = { version = "9.x.x" }
-aarch64-paging = "0.8.0"
-acpi = "5.0.0"
-arm-gic = "0.1.0"
-embedded-alloc = "0.6.0"
+aarch64-paging = "0.11.x"
+acpi = "6.x.x"
+arm-gic = "0.1.x"
+embedded-alloc = "0.7.0"
 generic_once_cell = "0.1.1"
-goblin = { version = "0.8", default-features = false, features = ["elf64"] }
+goblin = { version = "0.10.x", default-features = false, features = ["elf64"] }
 hermit-dtb = "0.1.1"
 lock_api = "0.4.11"
-log = "0.4.20"
+log = "0.4.x"
 plain = "0.2.3"
 qemu-exit = "3.0.2"
-spin = "0.9.8"
+spin = "0.10.x"
 sptr = "0.3.2"
 tock-registers = { version = "0.8.x", default-features = false, features = ["register_types"] }
 
