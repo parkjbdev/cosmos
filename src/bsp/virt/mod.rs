@@ -1,14 +1,9 @@
 use crate::drivers::devicetree;
 use crate::drivers::pl011::{self, PL011_UART};
 use crate::drivers::gicv3;
-use crate::bsp::memory::symbols::DEVICE_TREE_START;
 use crate::console::register_console;
 
 pub mod memory;
-
-fn init_device_tree() {
-    devicetree::init(DEVICE_TREE_START);
-}
 
 fn init_uart(real: bool, baud_rate: u32) {
     fn get_uart_freq() -> u32 {
@@ -70,8 +65,8 @@ fn init_gicv3(real: bool) {
     }
 }
 
-pub fn init_drivers(real: bool) {
-    init_device_tree();
+pub fn init_drivers(real: bool, dtb_addr: u64) {
+    devicetree::init(dtb_addr);
     init_uart(real, 115200);
     init_gicv3(real);
 }

@@ -1,13 +1,17 @@
-#![allow(dead_code)]
-
-use crate::kernel_main;
+use crate::init::kernel_main;
 use aarch64_cpu::{asm::eret, registers::*};
-use core::arch::global_asm;
+use core::{
+    arch::global_asm,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 global_asm!(include_str!("entry.s"));
 
+pub static BOOT_DTB_ADDR: AtomicU64 = AtomicU64::new(0);
+
 #[no_mangle]
-pub unsafe fn _start_cosmos(boot_core_stack_end_exclusive_addr: u64) {
+pub unsafe fn _start_cosmos(dtb_addr: u64, boot_core_stack_end_exclusive_addr: u64) {
+    BOOT_DTB_ADDR.store(dtb_addr, Ordering::Relaxed);
     // Change EL2 to EL1 and jump to kernel_main
 
     // Enable timer counter registers for EL1.
@@ -38,5 +42,6 @@ pub unsafe fn _start_cosmos(boot_core_stack_end_exclusive_addr: u64) {
     // are no plans to ever return to EL2, just re-use the same stack.
     // SP_EL1.set(virt_boot_core_stack_end_exclusive_addr);
     SP_EL1.set(boot_core_stack_end_exclusive_addr);
+
     eret();
 }

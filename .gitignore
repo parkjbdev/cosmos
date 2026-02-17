@@ -1,12 +1,12 @@
 # IDE files
-/.idea
-/.vscode
+.idea/
+.vscode/
 
 # macOS
 .DS_Store
 
 # Build files
-/target
+target/
 
 # Generated files
 disk.img

@@ -10,6 +10,9 @@
 .section .text._start
 
 _start:
+  // save x0 (dtb pointer) before clobbering it
+  mov x19, x0
+
   // Only proceed if the core executes in EL2. Park it otherwise.
   mrs x1, CurrentEL
   cmp x1, #0x8
@@ -45,8 +48,10 @@ _start:
   ADR_REL x0, __boot_core_stack_end_
 	mov		sp, x0
 
+  mov x1, x0          // x1 = stack_end (2nd arg to _start_cosmos)
+  mov x0, x19         // x0 = dtb_addr  (1st arg to _start_cosmos)
 	// Jump to Rust code.
-	b	_start_cosmos
+	bl	_start_cosmos
 
 	// Infinitely wait for events (aka "park the core").
 .L_parking_loop:
