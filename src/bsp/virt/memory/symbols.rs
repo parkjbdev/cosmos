@@ -1,15 +1,11 @@
-use core::{cell::UnsafeCell, ops::{Add, Range}};
-use super::{AccessPermissions, Address, AttributeFields, MemoryAttributes, MemorySize, Physical};
+use crate::drivers;
+use core::{cell::UnsafeCell, ops::Range};
 
-pub const RAM_START: u64 = 0x40000000;
-pub const DEVICE_TREE_START: u64 = 0x40000000;
+use super::{AccessPermissions, Address, AttributeFields, MemoryAttributes, MemorySize, Physical};
 
 extern "Rust" {
     static __kernel_start_: UnsafeCell<()>;
     static __kernel_end_: UnsafeCell<()>;
-
-    static __device_tree_start_: UnsafeCell<()>;
-    static __device_tree_end_: UnsafeCell<()>;
 
     static __text_start_: UnsafeCell<()>;
     static __text_end_: UnsafeCell<()>;
@@ -49,8 +45,10 @@ pub fn kernel_range() -> Range<Address<Physical>> {
 }
 
 pub fn device_tree() -> Section {
-    let start_addr: usize = unsafe { __device_tree_start_.get() as usize };
-    let end_addr: usize = unsafe { __device_tree_end_.get() as usize };
+    let start_addr: usize =
+        drivers::devicetree::BOOT_DTB_ADDR.load(core::sync::atomic::Ordering::Relaxed) as usize;
+    let end_addr: usize = start_addr + drivers::devicetree::get_dtb_size();
+
     Section {
         name: "Device Tree",
         range: Range {

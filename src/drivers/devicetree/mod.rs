@@ -1,31 +1,15 @@
+use core::sync::atomic::AtomicU64;
+
 use hermit_dtb::{Dtb, EnumSubnodesIter};
 use spin::Mutex;
 
 /// FDT magic number: 0xd00dfeed (big-endian)
 const FDT_MAGIC: u32 = 0xd00dfeed;
 
+pub static BOOT_DTB_ADDR: AtomicU64 = AtomicU64::new(0);
 pub static DEVICE_TREE: Mutex<Option<Dtb>> = Mutex::new(None);
 
-/// Find the DTB by checking the firmware-provided address first,
-/// then scanning known locations for the FDT magic.
-pub fn find_dtb(firmware_addr: u64, ram_start: u64) -> u64 {
-    // 1. Trust the bootloader if it provided a non-zero address with valid magic
-    if firmware_addr != 0 && has_fdt_magic(firmware_addr as usize) {
-        return firmware_addr;
-    }
-
-    // 2. Scan known offsets from RAM start (QEMU virt places DTB at RAM base)
-    for offset in [0x0, 0x100] {
-        let addr = ram_start as usize + offset;
-        if has_fdt_magic(addr) {
-            return addr as u64;
-        }
-    }
-
-    panic!("DTB not found");
-}
-
-fn has_fdt_magic(addr: usize) -> bool {
+pub fn has_fdt_magic(addr: usize) -> bool {
     let magic = unsafe { core::ptr::read_volatile(addr as *const u32) };
     u32::from_be(magic) == FDT_MAGIC
 }
@@ -36,6 +20,17 @@ pub fn init(base: u64) {
     *device_tree = Some(unsafe {
         Dtb::from_raw(sptr::from_exposed_addr(base as usize)).expect("Error Initializing DT")
     });
+}
+
+pub fn get_dtb_size() -> usize {
+    // TODO: This is a temporary hardcoded value until we can reliably read the size from the DTB header.
+    1024 * 1024
+
+    // cannot access to totalsize in hermit-dtb
+    // DEVICE_TREE
+    //     .lock()
+    //     .as_ref()
+    //     .unwrap().header.totalsize as usize
 }
 
 pub fn update_base_address(new_base: u32) {
