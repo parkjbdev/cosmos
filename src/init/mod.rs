@@ -8,6 +8,7 @@ use crate::bsp;
 use crate::bsp::memory::symbols;
 use crate::console;
 use crate::drivers;
+use crate::drivers::devicetree::BOOT_DTB_ADDR;
 use crate::memory;
 use log_crate::info;
 
@@ -16,11 +17,6 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // Initialize Exceptions
     arch::exception::irq::irq_disable();
     arch::exception::set_exception_handler();
-
-    // Discover DTB: use firmware-provided address (x0) if available,
-    // otherwise scan for FDT magic at known locations.
-    let firmware_dtb = arch::start::BOOT_DTB_ADDR.load(Ordering::Relaxed);
-    let dtb_addr = drivers::devicetree::find_dtb(firmware_dtb, symbols::RAM_START);
 
     console::log::init();
 
@@ -38,6 +34,8 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     // We must init the MMIO allocator and remap the UART first.
 
     memory::mmu::init_mmio_allocator();
+
+    let dtb_addr = BOOT_DTB_ADDR.load(Ordering::Relaxed);
     bsp::init_drivers(false, dtb_addr);
 
     // UART is now remapped to a virtual address — safe to print again.
@@ -60,8 +58,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     println!("   \\___/\\____/____/_/ /_/ /_/\\____/____/  v{}", ver);
     println!();
 
-    info!("Provided DTB address: {:#x}", firmware_dtb);
-    info!("DTB found at {:#x}", dtb_addr);
+    info!("Provided DTB address: {:#x}", dtb_addr);
 
     println!(
         "kernel space: {:#x} ~ {:#x}",

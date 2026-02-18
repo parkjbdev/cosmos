@@ -1,13 +1,12 @@
-use crate::init::kernel_main;
-use aarch64_cpu::{asm::eret, registers::*};
-use core::{
-    arch::global_asm,
-    sync::atomic::{AtomicU64, Ordering},
+use crate::{drivers::devicetree::BOOT_DTB_ADDR, init::kernel_main};
+use aarch64_cpu::{
+    asm::{barrier, eret},
+    registers::*,
 };
+use core::{arch::global_asm, sync::atomic::Ordering};
+use tock_registers::interfaces::ReadWriteable;
 
 global_asm!(include_str!("entry.s"));
-
-pub static BOOT_DTB_ADDR: AtomicU64 = AtomicU64::new(0);
 
 #[no_mangle]
 pub unsafe fn _start_cosmos(dtb_addr: u64, boot_core_stack_end_exclusive_addr: u64) {
@@ -42,6 +41,17 @@ pub unsafe fn _start_cosmos(dtb_addr: u64, boot_core_stack_end_exclusive_addr: u
     // are no plans to ever return to EL2, just re-use the same stack.
     // SP_EL1.set(virt_boot_core_stack_end_exclusive_addr);
     SP_EL1.set(boot_core_stack_end_exclusive_addr);
+
+    // Disable EL1 MMU/caches before transitioning.
+    // QEMU's bootloader may leave SCTLR_EL1.M=1, causing translation faults
+    // on physical memory accesses before the kernel sets up its own page tables.
+    SCTLR_EL1.modify(
+        SCTLR_EL1::M::Disable + // MMU enable for EL1 and EL0 stage 1 address translation.
+            SCTLR_EL1::A::Disable +
+            SCTLR_EL1::C::NonCacheable + // Cacheability control, for data accesses.
+            SCTLR_EL1::I::NonCacheable, // Instruction access Cacheability control, for accesses at EL0 and EL1
+    );
+    barrier::isb(barrier::SY);
 
     eret();
 }

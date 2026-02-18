@@ -7,19 +7,19 @@
   add \register, \register, #:lo12:\symbol
 .endm
 
-.section .text._header
+.section .text._start
 
 // https://www.kernel.org/doc/html/latest/arch/arm64/booting.html
 _start:
-  b _primary_entry
+  b _primary_entry      // code0
   .word 0               // code1
-  .quad 0x100000        // text_offset: 1MB from RAM start
-  .quad 0x2000000       // image_size: non-zero (32MB) so QEMU respects text_offset
-  .quad 0               // flags: LE, any page size, fixed placement
+  .quad 0x100000        // text_offset: 1MB offset (device tree gap in linker script)
+  .quad 0x100000000     // image_size: Effective Image size, little endian
+  .quad 0               // flags: kernel flags, little endian
   .quad 0               // res2
   .quad 0               // res3
   .quad 0               // res4
-  .ascii "ARM\x64"     // magic
+  .ascii "ARM\x64"      // Magic number, little endian, "ARM\x64" (=0x644d5241)
   .word 0               // res5
 
 _primary_entry:
