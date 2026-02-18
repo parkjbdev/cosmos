@@ -47,5 +47,11 @@ pub fn console() -> &'static dyn interface::Console {
 #[cfg(target_os = "none")]
 #[doc(hidden)]
 pub fn print(args: core::fmt::Arguments<'_>) {
-    console().write_fmt(args).unwrap();
+    // try_lock: panic handler 재진입 또는 console 미등록 시 deadlock 방지
+    // panic 중에 MutexGuard가 drop되지 않아 lock이 영구 점유되는 상황 대비
+    if let Some(guard) = CONSOLE.try_lock() {
+        if let Some(c) = *guard {
+            let _ = c.write_fmt(args);
+        }
+    }
 }
