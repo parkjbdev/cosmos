@@ -3,6 +3,7 @@ CPU_CORE := 1
 RAM_SIZE := 4G
 
 KERNEL := ./target/aarch64-unknown-none-softfloat/debug/cosmos
+KERNEL_BIN := $(KERNEL).bin
 
 DISK_IMG := disk.img
 DISK_FORMAT := qcow2
@@ -19,25 +20,28 @@ silent-build: ${DISK_IMG}
 ${KERNEL}:
 	cargo build
 
+${KERNEL_BIN}: ${KERNEL}
+	rust-objcopy -O binary ${KERNEL} ${KERNEL_BIN}
+
 ${DISK_IMG}:
 	qemu-img create -f ${DISK_FORMAT} ${DISK_IMG} ${DISK_SIZE}
 
-run: silent-build ${DISK_IMG} ${KERNEL}
+run: silent-build ${KERNEL_BIN} ${DISK_IMG}
 	@qemu-system-aarch64 \
 		-machine virt,gic-version=3,virtualization=true  \
 		-cpu ${CPU} -smp ${CPU_CORE} -m ${RAM_SIZE}           \
 		-semihosting \
-		-kernel ${KERNEL} \
+		-kernel ${KERNEL_BIN} \
 		-drive if=virtio,format=${DISK_FORMAT},file=${DISK_IMG}          \
 		-nographic -serial mon:stdio \
 		-d int
 
-dbg: ${DISK_IMG} ${KERNEL}
+dbg: ${KERNEL_BIN} ${DISK_IMG}
 	qemu-system-aarch64 \
-		-machine virt,gic-version=3,virtualization=true  \
+		-machine virt,gic-version=3,virtualization=true \
 		-cpu ${CPU} -smp ${CPU_CORE} -m ${RAM_SIZE}           \
 		-semihosting \
-		-kernel ${KERNEL} \
+		-kernel ${KERNEL_BIN} \
 		-drive if=virtio,format=${DISK_FORMAT},file=${DISK_IMG}          \
 		-nographic -serial mon:stdio -s -S \
 		-d int

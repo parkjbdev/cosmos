@@ -7,9 +7,22 @@
   add \register, \register, #:lo12:\symbol
 .endm
 
-.section .text._start
+.section .text._header
 
+// https://www.kernel.org/doc/html/latest/arch/arm64/booting.html
 _start:
+  b _primary_entry
+  .word 0               // code1
+  .quad 0x100000        // text_offset: 1MB from RAM start
+  .quad 0x2000000       // image_size: non-zero (32MB) so QEMU respects text_offset
+  .quad 0               // flags: LE, any page size, fixed placement
+  .quad 0               // res2
+  .quad 0               // res3
+  .quad 0               // res4
+  .ascii "ARM\x64"     // magic
+  .word 0               // res5
+
+_primary_entry:
   // save x0 (dtb pointer) before clobbering it
   mov x19, x0
 

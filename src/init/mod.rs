@@ -60,6 +60,7 @@ pub(crate) unsafe extern "C" fn kernel_main() -> ! {
     println!("   \\___/\\____/____/_/ /_/ /_/\\____/____/  v{}", ver);
     println!();
 
+    info!("Provided DTB address: {:#x}", firmware_dtb);
     info!("DTB found at {:#x}", dtb_addr);
 
     println!(
