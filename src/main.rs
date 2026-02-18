@@ -18,7 +18,7 @@ pub mod sync;
 
 extern crate log as log_crate;
 use core::{alloc::Layout, arch::asm};
-use log_crate::{debug, error, info, warn};
+use log_crate::info;
 
 #[alloc_error_handler]
 fn handle_alloc_error(_layout: Layout) -> ! {
@@ -27,15 +27,38 @@ fn handle_alloc_error(_layout: Layout) -> ! {
 
 #[panic_handler]
 fn handle_panic(info: &core::panic::PanicInfo<'_>) -> ! {
-    println!("************************************************");
-    println!("KERNEL PANIC: {}", info.message());
-    let (file, line, column) = match info.location() {
-        Some(location) => (location.file(), location.line(), location.column()),
-        None => ("unknown", 0, 0),
-    };
+    // console이 미등록이거나 재진입 상황에서도 semihosting으로 출력
+    use core::fmt::Write;
+    struct SemihostWriter;
 
-    println!("{}:{}:{}", file, line, column);
-    println!("************************************************");
+    impl Write for SemihostWriter {
+        fn write_str(&mut self, s: &str) -> core::fmt::Result {
+            let bytes = s.as_bytes();
+            let mut buf = [0u8; 256];
+            let len = bytes.len().min(buf.len() - 1);
+            buf[..len].copy_from_slice(&bytes[..len]);
+
+            unsafe {
+                asm!(
+                    "hlt #0xF000",
+                    in("x0") 0x04u64,
+                    in("x1") buf.as_ptr() as u64,
+                    options(readonly, nostack)
+                );
+            }
+            Ok(())
+        }
+    }
+
+    let mut w = SemihostWriter;
+
+    writeln!(w, "** KERNEL PANIC **");
+    writeln!(w, "{}", info.message());
+    if let Some(loc) = info.location() {
+        writeln!(w, " at {}:{}:{}", loc.file(), loc.line(), loc.column());
+    }
+
+    // Killing kernel
 
     #[repr(C)]
     struct QEMUParameterBlock {

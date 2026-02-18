@@ -1,6 +1,6 @@
 CPU := cortex-a76
 CPU_CORE := 1
-RAM_SIZE := 4G
+RAM_SIZE := 16G
 
 KERNEL := ./target/aarch64-unknown-none-softfloat/debug/cosmos
 KERNEL_BIN := $(KERNEL).bin
@@ -27,14 +27,13 @@ ${DISK_IMG}:
 	qemu-img create -f ${DISK_FORMAT} ${DISK_IMG} ${DISK_SIZE}
 
 run: silent-build ${KERNEL_BIN} ${DISK_IMG}
-	@qemu-system-aarch64 \
+	qemu-system-aarch64 \
 		-machine virt,gic-version=3,virtualization=true  \
 		-cpu ${CPU} -smp ${CPU_CORE} -m ${RAM_SIZE}           \
-		-semihosting \
+		-semihosting-config enable=on,target=native \
 		-kernel ${KERNEL_BIN} \
 		-drive if=virtio,format=${DISK_FORMAT},file=${DISK_IMG}          \
-		-nographic -serial mon:stdio \
-		-d int
+		-nographic -serial mon:stdio
 
 dbg: ${KERNEL_BIN} ${DISK_IMG}
 	qemu-system-aarch64 \
