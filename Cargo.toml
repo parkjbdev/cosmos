@@ -15,6 +15,7 @@ aarch64-paging = "0.11.x"
 acpi = "6.x.x"
 arm-gic = "0.1.x"
 embedded-alloc = "0.7.0"
+fdt = "0.1.x"
 generic_once_cell = "0.1.1"
 goblin = { version = "0.10.x", default-features = false, features = ["elf64"] }
 hermit-dtb = "0.1.1"
@@ -22,6 +23,7 @@ lock_api = "0.4.11"
 log = "0.4.x"
 plain = "0.2.3"
 qemu-exit = "3.0.2"
+semihosting = { version = "0.1", features = ["stdio"] }
 spin = "0.10.x"
 sptr = "0.3.2"
 tock-registers = { version = "0.8.x", default-features = false, features = ["register_types"] }
