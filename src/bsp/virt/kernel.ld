@@ -5,8 +5,6 @@ __PAGE_SIZE_ = 64K;
 __PAGE_MASK_ = __PAGE_SIZE_ - 1;
 
 ENTRY(_start)
-/* Qemu Device Tree Blob is 1MB */
-__kernel_start_ = 0x40000000;
 
 PHDRS
 {
@@ -17,10 +15,8 @@ PHDRS
 
 SECTIONS
 {
-  . = __kernel_start_;
-  __device_tree_start_ = .;
-  . += 1M;
-  __device_tree_end_ = .;
+  . = 0x40000000;
+  __kernel_start_ = .;
 
   __text_start_ = .;
   .text : ALIGN(65536) {
@@ -36,6 +32,17 @@ SECTIONS
   .rodata : ALIGN(65536) {
     *(.rodata)
     *(.rodata.*)
+  } :segment_ro
+
+  .rela.dyn : ALIGN(8) {
+    __rela_start_ = .;
+    *(.rela .rela*)
+    __rela_end_ = .;
+  } :segment_ro
+
+  .got : ALIGN(8) {
+    *(.got)
+    *(.got.plt)
   } :segment_ro
   . = ALIGN(__PAGE_SIZE_);
   __rodata_end_ = .;
@@ -61,13 +68,6 @@ SECTIONS
   . = ALIGN(__PAGE_SIZE_);
   __bss_end_ = .;
 
-  .got    : ALIGN(65536) {
-       /* Global offset table Todo */
-    *(.got)
-  } :segment_ro
-  ASSERT(SIZEOF(.got) == 0, "Relocation Not Supported")
-  . = ALIGN(__PAGE_SIZE_);
-
   /***********************************************************************************************
    * Boot Core Stack
    ***********************************************************************************************/
@@ -88,17 +88,17 @@ SECTIONS
 
   __kernel_end_ = .;
 
-  /* 디버그 섹션들을 유지 */
-    /* .debug_info 0 : { *(.debug_info) } */
-    /* .debug_abbrev 0 : { *(.debug_abbrev) } */
-    /* .debug_line 0 : { *(.debug_line) } */
-    /* .debug_str 0 : { *(.debug_str) } */
-
-    /* 또는 /DISCARD/에서 디버그 섹션을 제외 */
-    /* /DISCARD/ : { */
-    /*     *(.note.GNU-stack) */
-    /*     *(.note.gnu.property) */
-        /* 디버그 섹션은 제외 */
-        /* *(.debug*) */
-    /* } */
+  /DISCARD/ : {
+    *(.dynamic)
+    *(.dynsym)
+    *(.dynstr)
+    *(.hash)
+    *(.gnu.hash)
+    *(.plt)
+    *(.plt.got)
+    *(.interp)
+    *(.note.GNU-stack)
+    *(.note.gnu.property)
+    *(.comment)
+  }
 }
